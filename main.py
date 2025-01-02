@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
+from parameters_ui import ParametersUI
 from lore_ui import LoreUI
-from relationship_ui import RelationshipUI
 from story_structure_ui import StoryStructureUI
-from chapter_outlining_ui import ChapterOutliningUI
+from scene_plan_ui import ScenePlanningUI
 from chapter_writing_ui import ChapterWritingUI
 
 class NovelWriterApp:
@@ -15,25 +15,25 @@ class NovelWriterApp:
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(expand=True, fill="both")
 
+        # Parameters UI
+        self.param_frame = ttk.Frame(self.notebook)
+        self.notebook.add(self.param_frame, text="Novel Parameters")
+        self.param_ui = ParametersUI(self.param_frame)
+
         # Lore Generation UI
         self.lore_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.lore_frame, text="Generate Lore")
         self.lore_ui = LoreUI(self.lore_frame)
-
-        # Relationships Generation UI
-        self.relationship_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.relationship_frame, text="Character Relationships")
-        self.relationship_ui = RelationshipUI(self.relationship_frame)
 
         # High-Level Story Structure UI
         self.structure_frame = ttk.Frame(self.notebook)
         self.notebook.add(self.structure_frame, text="Story Structure")
         self.structure_ui = StoryStructureUI(self.structure_frame)
 
-        # Chapter Outlining UI
+        # Scene Planning UI
         self.outlining_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.outlining_frame, text="Chapter Outlining")
-        self.outlining_ui = ChapterOutliningUI(self.outlining_frame)
+        self.notebook.add(self.outlining_frame, text="Scene Outlining")
+        self.outlining_ui = ScenePlanningUI(self.outlining_frame)
 
         # Chapter Writing UI
         self.chapter_writing_frame = ttk.Frame(self.notebook)
