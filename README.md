@@ -12,8 +12,8 @@ The novel generation process is broken down as follows:
 
 1. Collect parameters from user and generate a high level outline.
 2. Generate Universe Background (multiple sub-processes)
-3. Generate story acts outline
-4. Generate chapter outlines
+3. Generate story act structure (5 acts)
+4. Generate chapter outlines from the 5-act outline
 5. Generate scenes for each chapter outline
 6. Generate prose on a scene-by-scene basis
 

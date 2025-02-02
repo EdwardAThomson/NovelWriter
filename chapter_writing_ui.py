@@ -1,10 +1,13 @@
 from tkinter import ttk, messagebox
-from ai_helper import send_prompt, send_prompt_o1
+from ai_helper import send_prompt
 import re
 
 class ChapterWritingUI:
     def __init__(self, parent):
         self.parent = parent
+
+        # self.model="gpt-4o"
+        self.model="gemini-1.5-pro"
 
         # Frame setup for chapter writing UI
         self.chapter_writing_frame = ttk.Frame(parent)
@@ -35,6 +38,11 @@ class ChapterWritingUI:
             data = file.read()
         return data
 
+    def normalize_markdown(self, scenes):
+        # Match scene headings specifically (e.g., **Scene 1: ...**)
+        normalized_scenes = re.sub(r"\*\*Scene (\d+): (.+?)\*\*", r"### Scene \1: \2", scenes)
+        return normalized_scenes
+
 
     def write_chapter(self):
         try:
@@ -56,17 +64,20 @@ class ChapterWritingUI:
             scene_count = scenes.count("### ")
             print("scene_count", scene_count)
 
+            # Normalize markdown formatting
+            scenes = self.normalize_markdown(scenes)
+
             # Detect the number of scenes using regex
             scene_titles = re.findall(r"### (.+)", scenes)  # Extracts titles after "### "
             scene_count = len(scene_titles)
 
             print(f"Detected {scene_count} scenes in Chapter {chapter_number}.")
-
-
             print("Trying to generate chapter....")
 
-
             scenes = []
+
+            # TODO: IF we are on the final chapter, include that detail in the prompt. The LLMs dont know to end.
+            # Potentially we need to state where we are in the story arc??
 
             # Iterate over the scenes and make API requests
             for idx, title in enumerate(scene_titles, start=1):
@@ -98,16 +109,16 @@ class ChapterWritingUI:
                     f"* character dialogue\n"
                     f"* character actions that progress the story\n"
                     f"* character interactions beyond dialogue\n"
-                    f"and anything else as needed to bring the scene to life.\n"
+                    f"and anything else as needed to bring the scene to life. Please only generate prose with no additional comments.\n"
                     f"You have thousands of tokens available for the output, so there are no problems with generating a lot of text."
                 )
 
                 print(prompt)
 
-
                 # Perform API request (example call)
                 # response = send_prompt(prompt, model="gpt-4-turbo", max_tokens=800, temperature=0.7)
-                response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative storyteller like George RR Martin.")
+                # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative storyteller like George RR Martin.")
+                response = send_prompt(prompt, model=self.model)
                 scenes.append(response)
 
                 # Save the generated scene to a file
@@ -125,25 +136,6 @@ class ChapterWritingUI:
                     chapter_file.write(chapter_content)
 
             print(f"Chapter {chapter_number} saved as {chapter_filename}")
-
-
-
-
-            # Send the prompt to generate the content for the section
-            ### model="gpt-4o"
-            ### GPT4 works with roles, but o1 models don't seem to.
-            # GPT4o
-            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative storyteller like George RR Martin.")
-            # o1-mini    //     o1-preview
-            #response = send_prompt_o1(prompt, model="o1-preview")
-
-
-            # Save the generated chapter content to a file
-        #    print("Trying to save Chapter_(number).md")
-        #    chapter_filename = f"chapter_{chapter_number}.md"
-        #    with open(chapter_filename, "w") as chapter_file:
-        #        chapter_file.write(response)
-
 
         #    print(f"Chapter {chapter_number} saved successfully to {chapter_filename}")
             messagebox.showinfo("Success", f"Chapter {chapter_number} saved successfully.")
@@ -207,7 +199,8 @@ class ChapterWritingUI:
             )
 
             # GPT4o
-            response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative storyteller like George RR Martin.")
+            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative storyteller like George RR Martin.")
+            response = send_prompt(prompt, model=self.model)
             # o1
             # response = send_prompt_o1(prompt, model="o1-mini")
 

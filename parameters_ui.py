@@ -4,12 +4,16 @@ import re
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from ai_helper import send_prompt
+from ai_helper import send_prompt, send_prompt_gemini
+
 
 class ParametersUI:
     def __init__(self, root):
         self.root = root
         self.create_widgets()
+
+        # self.model="gpt-4o"
+        self.model="gemini-1.5-pro"
 
     def create_widgets(self):
         # Create Notebook (Tabs)
@@ -262,7 +266,7 @@ class ParametersUI:
 
         # Create something JSON like -- do I want to save this?
         summary = "\n".join([f"{key}: {value}" for key, value in data.items()])
-        print(summary)
+        # print(summary)
 
         print("Writing parameters to file....")
         with open("parameters.txt", "w") as file:
@@ -286,9 +290,15 @@ class ParametersUI:
                 f"Please use markdown format for the output."
             )
 
-            generated_lore = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7,
-                                         role_description="You are a creative and descriptive storyteller. You will create original text only.")
+            print(prompt)
+            # generated_lore = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7,
+            #                            role_description="You are a creative and descriptive storyteller. You will create original text only.")
 
+            # generated_lore = send_prompt_gemini(prompt, model_name="gemini-1.5-pro", max_output_tokens=8192, temperature=0.9, top_p=1, top_k=40)
+
+            # generated_lore = send_prompt(prompt, model="gpt-4o")
+            # generated_lore = send_prompt(prompt, model="gemini-1.5-pro")
+            generated_lore = send_prompt(prompt, model=self.model)
 
             # Save the generated lore to a file
             with open("generated_lore.md", "w") as file:

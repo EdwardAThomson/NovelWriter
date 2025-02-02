@@ -1,9 +1,12 @@
 from tkinter import ttk, messagebox
-from ai_helper import send_prompt, send_prompt_o1
+from ai_helper import send_prompt
 
 class ScenePlanningUI:
     def __init__(self, parent):
         self.parent = parent
+
+        # self.model="gpt-4o"
+        self.model="gemini-1.5-pro"
 
         # Frame setup for chapter writing UI
         self.chapter_writing_frame = ttk.Frame(parent)
@@ -53,7 +56,8 @@ class ScenePlanningUI:
             print("prompt....")
             print(prompt)
             # Send prompt to OpenAI API
-            response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative author focusing on structuring a story into detailed scenes.")
+            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative author focusing on structuring a story into detailed scenes.")
+            response = send_prompt(prompt, model=self.model)
 
             with open(f"scenes_chapter_{chapter_number}.md", "w") as scene_file:
                 scene_file.write(response)
@@ -87,7 +91,8 @@ class ScenePlanningUI:
             print("prompt....")
             print(prompt)
             # Send prompt to OpenAI API
-            response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative author reviewing the structuring of these detailed scenes.")
+            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative author reviewing the structuring of these detailed scenes.")
+            response = send_prompt(prompt, model=self.model)
 
             with open(f"re_scenes_chapter_{chapter_number}.md", "w") as scene_file:
                 scene_file.write(response)

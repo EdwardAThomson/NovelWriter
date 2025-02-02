@@ -1,9 +1,12 @@
 from tkinter import ttk, messagebox
-from ai_helper import send_prompt, send_prompt_o1
+from ai_helper import send_prompt
 
 class StoryStructureUI:
     def __init__(self, parent):
         self.parent = parent
+
+         # self.model="gpt-4o"
+        self.model="gemini-1.5-pro"
 
         # Frame setup for story structure UI
         self.story_structure_frame = ttk.Frame(parent)
@@ -68,10 +71,8 @@ class StoryStructureUI:
             print(prompt)
 
             # Send prompt to OpenAI API --- uses GTP4o
-            response = send_prompt(prompt, model="gpt-4o", max_tokens=16384 , temperature=0.7, role_description="You are an expert storyteller focusing on developing a compelling story structure.")
-
-            # o1 -- this uses o1 instead of GPT4o
-            #response = send_prompt_o1(prompt, model="o1-mini")
+            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384 , temperature=0.7, role_description="You are an expert storyteller focusing on developing a compelling story structure.")
+            response = send_prompt(prompt, model=self.model)
 
             # Save the structure to a file
             print("Trying to save file as markdown....")
@@ -113,7 +114,8 @@ class StoryStructureUI:
             print("prompt....")
             print(prompt)
             # Send prompt to OpenAI API
-            response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative author focusing on structuring a story into detailed chapters.")
+            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative author focusing on structuring a story into detailed chapters.")
+            response = send_prompt(prompt, model=self.model)
 
             # Increment the chapter number based on the response (assuming response includes multiple chapters)
             chapter_count = response.count("### Chapter")

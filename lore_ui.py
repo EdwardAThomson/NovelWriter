@@ -8,6 +8,9 @@ class LoreUI:
     def __init__(self, parent):
         self.parent = parent
 
+        # self.model="gpt-4o"
+        self.model="gemini-1.5-pro"
+
         # Frame setup for relationships UI
         self.lore_frame = ttk.Frame(parent)
         self.lore_frame.pack(expand=True, fill="both")
@@ -83,7 +86,10 @@ class LoreUI:
             print("Prompt... [tech lore]")
             print(prompt)
 
-            response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are an expert storyteller focused on character relationships.")
+            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are an expert storyteller focused on character relationships.")
+            # response = send_prompt_gemini(prompt, model_name="gemini-1.5-pro", max_output_tokens=8192, temperature=0.9, top_p=1, top_k=40)
+            response = send_prompt(prompt, model=self.model)
+
             print(response)
 
             with open("technology.md", "w") as file:
@@ -117,7 +123,8 @@ class LoreUI:
             print("Prompt... [list of planets]")
             print(prompt)
 
-            response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are an expert storyteller focused on character relationships.")
+            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are an expert storyteller focused on character relationships.")
+            response = send_prompt(prompt, model=self.model)
             print(response)
 
             with open("planets.md", "w") as file:
@@ -151,7 +158,9 @@ class LoreUI:
             print("prompt... [Improving Factions]")
             print(prompt)
 
-            response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are an expert storyteller focused on character relationships.")
+            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are an expert storyteller focused on character relationships.")
+            # response = send_prompt_gemini(prompt, model_name="gemini-1.5-pro", max_output_tokens=8192, temperature=0.9, top_p=1, top_k=1)
+            response = send_prompt(prompt, model=self.model)
             print(response)
 
             with open("factions.md", "w") as file:
@@ -187,7 +196,8 @@ class LoreUI:
             print("prompt... [Generating characters]")
             print(prompt)
 
-            response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are an expert storyteller focused on character relationships.")
+            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are an expert storyteller focused on character relationships.")
+            response = send_prompt(prompt, model=self.model)
             print(response)
 
             with open("characters.md", "w") as file:
@@ -224,7 +234,8 @@ class LoreUI:
             print("prompt... [Improving characters]")
             print(prompt)
 
-            response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are an expert storyteller focused on character relationships.")
+            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are an expert storyteller focused on character relationships.")
+            response = send_prompt(prompt, model=self.model)
             print(response)
 
             with open("characters_enhanced.md", "w") as file:
@@ -265,7 +276,8 @@ class LoreUI:
 
             print(prompt)
 
-            response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are an expert storyteller focused on character relationships.")
+            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are an expert storyteller focused on character relationships.")
+            response = send_prompt(prompt, model=self.model)
             print(response)
 
             with open("relationships.md", "w") as file:
