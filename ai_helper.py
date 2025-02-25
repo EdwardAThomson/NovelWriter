@@ -35,7 +35,15 @@ def send_prompt(prompt, model="gpt-4o"):
             prompt=prompt,
             model_name="gemini-1.5-pro",
             max_output_tokens=8192,
-            temperature=0.9,
+            temperature=0.7,
+            top_p=1,
+            top_k=40
+        ),
+        "gemini-2.0-pro-exp-02-05": lambda prompt: send_prompt_gemini(
+            prompt=prompt,
+            model_name="gemini-2.0-pro-exp-02-05",
+            max_output_tokens=8192,
+            temperature=0.7,
             top_p=1,
             top_k=40
         ),
@@ -48,36 +56,6 @@ def send_prompt(prompt, model="gpt-4o"):
     print(f"trying:{model}")
     # Call the corresponding function by looking up the dictionary
     return model_config[model](prompt)
-
-
-# def send_prompt(prompt, model="gpt-4o"):
-#     # Default parameter mapping
-#     if model == "gpt-4o":
-#         print(f"trying:{model}")
-#         return send_prompt_oai(
-#             prompt=prompt,
-#             model=model,
-#             max_tokens=16384,  # Default for OpenAI
-#             temperature=0.7,
-#             role_description="You are an expert storyteller focused on character relationships."
-#         )
-#     elif model == "o1":
-#         print(f"trying:{model}")
-#         return send_prompt_o1(prompt, model=model)
-#     elif model == "gemini-1.5-pro":
-#         print(f"trying:{model}")
-#         return send_prompt_gemini(
-#             prompt=prompt,
-#             model_name=model,  # Mapped internally to "model_name"
-#             max_output_tokens=8192,  # Default for Gemini
-#             temperature=0.9,
-#             top_p=1,
-#             top_k=40
-#         )
-#     else:
-#         raise ValueError(f"Unsupported model: {model}")
-
-
 
 
 # Send prompts with GPT4o and 4o-mini

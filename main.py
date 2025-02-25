@@ -1,10 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
-from parameters_ui import ParametersUI
-from lore_ui import LoreUI
-from story_structure_ui import StoryStructureUI
-from scene_plan_ui import ScenePlanningUI
-from chapter_writing_ui import ChapterWritingUI
+from parameters import ParametersUI
+from lore import LoreUI
+from story_structure import StoryStructureUI
+from scene_plan import ScenePlanningUI
+from chapter_writing import ChapterWritingUI
 
 class NovelWriterApp:
     def __init__(self, root):
@@ -32,7 +32,7 @@ class NovelWriterApp:
 
         # Scene Planning UI
         self.outlining_frame = ttk.Frame(self.notebook)
-        self.notebook.add(self.outlining_frame, text="Scene Outlining")
+        self.notebook.add(self.outlining_frame, text="Scene Planning")
         self.outlining_ui = ScenePlanningUI(self.outlining_frame)
 
         # Chapter Writing UI

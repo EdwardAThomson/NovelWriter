@@ -1,13 +1,16 @@
 from tkinter import ttk, messagebox
 from ai_helper import send_prompt
 import re
+from helper_fns import open_file, write_file
 
 class ChapterWritingUI:
     def __init__(self, parent):
         self.parent = parent
 
         # self.model="gpt-4o"
-        self.model="gemini-1.5-pro"
+        self.model="gemini-2.0-pro-exp-02-05"
+        # "gemini-1.5-pro"
+        # gemini-2.0-pro-exp-02-05
 
         # Frame setup for chapter writing UI
         self.chapter_writing_frame = ttk.Frame(parent)
@@ -31,12 +34,6 @@ class ChapterWritingUI:
         self.write_chapter_button = ttk.Button(self.chapter_writing_frame, text="Re-Write Chapter", command=self.rewrite_chapter)
         self.write_chapter_button.pack(pady=20)
 
-    # Helper function to open the main lore file
-    def open_file(self, filename):
-        print("opening file: " + filename)
-        with open(filename, "r") as file:
-            data = file.read()
-        return data
 
     def normalize_markdown(self, scenes):
         # Match scene headings specifically (e.g., **Scene 1: ...**)
@@ -48,16 +45,18 @@ class ChapterWritingUI:
         try:
             chapter_number = int(self.chapter_number_entry.get())
 
-            params = self.open_file("parameters.txt")
-            lore_content = self.open_file("generated_lore.md")
-            characters_content = self.open_file("characters.md")
-            en_characters_content = self.open_file("characters.md")
-            relationships_content = self.open_file("relationships.md")
-            factions_content = self.open_file("factions.md")
+            params = open_file("parameters.txt")
+            lore_content = open_file("generated_lore.md")
+            characters_content = open_file("characters.md")
+            en_characters_content = open_file("characters.md")
+            relationships_content = open_file("relationships.md")
+            factions_content = open_file("factions.md")
 
+            # with open(f"scenes_chapter_{chapter_number}.md", "r") as scenes_file:
+            #    scenes = scenes_file.read()
 
-            with open(f"scenes_chapter_{chapter_number}.md", "r") as scenes_file:
-                scenes = scenes_file.read()
+            filename = f"scenes_chptr_{chapter_number}.md"  # check spelling
+            scenes = open_file(filename)
 
             print("Using scenes for this chapter")
             # Increment the chapter number based on the response (assuming response includes multiple chapters)
@@ -77,7 +76,8 @@ class ChapterWritingUI:
             scenes = []
 
             # TODO: IF we are on the final chapter, include that detail in the prompt. The LLMs dont know to end.
-            # Potentially we need to state where we are in the story arc??
+            # TODO: Include the previous chapter in the prompt? For chapter 1, we could include some background?
+            ## Potentially we need to state where we are in the story arc??
 
             # Iterate over the scenes and make API requests
             for idx, title in enumerate(scene_titles, start=1):
@@ -109,21 +109,25 @@ class ChapterWritingUI:
                     f"* character dialogue\n"
                     f"* character actions that progress the story\n"
                     f"* character interactions beyond dialogue\n"
-                    f"and anything else as needed to bring the scene to life. Please only generate prose with no additional comments.\n"
+                    f"and anything else as needed to bring the scene to life.\n"
+                    f"Please only generate prose with no additional comments, although a chapter title and scene title is fine.\n"
                     f"You have thousands of tokens available for the output, so there are no problems with generating a lot of text."
                 )
 
                 print(prompt)
 
                 # Perform API request (example call)
-                # response = send_prompt(prompt, model="gpt-4-turbo", max_tokens=800, temperature=0.7)
-                # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative storyteller like George RR Martin.")
+
                 response = send_prompt(prompt, model=self.model)
+                message = f"\n\nThis is Scene {idx} in Chapter {chapter_number}\n\n" # send_prompt(prompt, model=self.model)
+                print(message)
                 scenes.append(response)
 
                 # Save the generated scene to a file
-                with open(f"scene_{chapter_number}_{idx}.md", "w") as scene_file:
-                    scene_file.write(response)
+                # with open(f"scene_{chapter_number}_{idx}.md", "w") as scene_file:
+                #     scene_file.write(response)
+
+                write_file(f"scene_{chapter_number}_{idx}.md", response)
                 print(f"Scene {idx} saved as scene_{chapter_number}_{idx}.md.")
 
 
@@ -132,9 +136,10 @@ class ChapterWritingUI:
 
             # Save the combined chapter to a file
             chapter_filename = f"chapter_{chapter_number}.md"
-            with open(chapter_filename, "w") as chapter_file:
-                    chapter_file.write(chapter_content)
+            # with open(chapter_filename, "w") as chapter_file:
+            #        chapter_file.write(chapter_content)
 
+            write_file(chapter_filename, chapter_content)
             print(f"Chapter {chapter_number} saved as {chapter_filename}")
 
         #    print(f"Chapter {chapter_number} saved successfully to {chapter_filename}")
@@ -151,28 +156,20 @@ class ChapterWritingUI:
         try:
             chapter_number = int(self.chapter_number_entry.get())
 
-            parameters = self.open_file("parameters.txt")
-            lore_content = self.open_file("generated_lore.md")
-            characters_content = self.open_file("characters.md")
-            en_characters_content = self.open_file("characters.md")
-            relationships_content = self.open_file("relationships.md")
-            factions_content = self.open_file("factions.md")
+            parameters = open_file("parameters.txt")
+            lore_content = open_file("generated_lore.md")
+            characters_content = open_file("characters.md")
+            en_characters_content = open_file("characters.md")
+            relationships_content = open_file("relationships.md")
+            factions_content = open_file("factions.md")
 
-            structure = self.open_file("story_structure.md")  # High-level structure
-
-            # High-level structure
-            # with open("story_structure.md", "r") as act_file:
-            #     structure = act_file.read()
+            structure = open_file("story_structure.md")  # High-level structure
 
             # Chapter to re-write
             # TODO: remove?
             chapter_filename = f"chapter_{chapter_number}.md"
             with open(chapter_filename, "r") as chapter_file:
                 chapter_file_in = chapter_file.read()
-
-        #   # with open("chapter_.md", "r") as scene_file:
-        #   #     scene = scene_file.read()
-
 
             # Prompt
             print("Trying to re-generate chapter....")
@@ -198,19 +195,16 @@ class ChapterWritingUI:
                 f"{chapter_file_in}"
             )
 
-            # GPT4o
-            # response = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7, role_description="You are a creative storyteller like George RR Martin.")
             response = send_prompt(prompt, model=self.model)
-            # o1
-            # response = send_prompt_o1(prompt, model="o1-mini")
-
 
             # Save the generated chapter content to a file
             print("Trying to RE-save Chapter_(number).md")
             chapter_filename = f"re_chapter_{chapter_number}.md"
 
-            with open(chapter_filename, "w") as chapter_file:
-                chapter_file.write(response)
+            # with open(chapter_filename, "w") as chapter_file:
+            #     chapter_file.write(response)
+
+            write_file(chapter_filename, response)
 
             print(f"Chapter {chapter_number} saved successfully to {chapter_filename}")
             messagebox.showinfo("Success", f"Chapter {chapter_number} RE-saved successfully.")

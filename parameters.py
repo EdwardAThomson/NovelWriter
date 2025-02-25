@@ -3,9 +3,8 @@
 import re
 import tkinter as tk
 from tkinter import ttk, messagebox
-
-from ai_helper import send_prompt, send_prompt_gemini
-
+from ai_helper import send_prompt
+from helper_fns import write_file
 
 class ParametersUI:
     def __init__(self, root):
@@ -13,7 +12,9 @@ class ParametersUI:
         self.create_widgets()
 
         # self.model="gpt-4o"
-        self.model="gemini-1.5-pro"
+        self.model="gemini-2.0-pro-exp-02-05"
+        # gemini-1.5-pro
+
 
     def create_widgets(self):
         # Create Notebook (Tabs)
@@ -236,8 +237,10 @@ class ParametersUI:
         audience_dropdown['values'] = ("Young Adult (YA)", "Adult", "Niche (e.g., Cyberpunk, Military Sci-Fi)")
         audience_dropdown.grid(row=0, column=1, padx=10, pady=5)
 
+    # Collect parameters into a file -- parameters.txt
+    # Generate background lore for the story
     def submit(self):
-        # Gather all input data
+
         data = {
             "Genre": self.genre_var.get(),
             "Subgenre": self.subgenre_var.get(),
@@ -264,50 +267,29 @@ class ParametersUI:
             "Target Audience": self.audience_var.get(),
         }
 
-        # Create something JSON like -- do I want to save this?
         summary = "\n".join([f"{key}: {value}" for key, value in data.items()])
-        # print(summary)
 
+         # TODO: Save a JSON object  (is already structured well enough
         print("Writing parameters to file....")
-        with open("parameters.txt", "w") as file:
-                 file.write(summary)
+        filename = "parameters.txt" # "/parameters.json"
+        write_file(filename, summary)
 
-        # make API request
+        # Generate background lore (make LLM API request)
         try:
-            # Generate lore from API
-            print("trying to make an API request")
-            # generated_lore = generate_lore_from_api(data)
+            print("Trying to generate lore (LLM API request)")
 
             prompt = (
                 f"Please generate background lore for a novel length story using the following parameters:\n\n"
                 f"{data}\n\n"
-                f"Provide a compelling summary that establishes the setting and major elements of the story."
-                # f"Include the major factions involved.\n"
-                # f"Then, please create a new section for the major factions. List out their main planets.\n"
-                # f"Then, please create a new section for Key Characters. Please also include a list of minor characters too."
-                # f"Please provide a list of key characters in markdown, include each character's name, role, gender (male or female), faction alignment, character description.\n"
-                # f"No more text should come after the characters list.\n"
+                f"Provide a compelling summary that establishes the setting and major elements of the story.\n"
                 f"Please use markdown format for the output."
             )
 
             print(prompt)
-            # generated_lore = send_prompt(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7,
-            #                            role_description="You are a creative and descriptive storyteller. You will create original text only.")
-
-            # generated_lore = send_prompt_gemini(prompt, model_name="gemini-1.5-pro", max_output_tokens=8192, temperature=0.9, top_p=1, top_k=40)
-
-            # generated_lore = send_prompt(prompt, model="gpt-4o")
-            # generated_lore = send_prompt(prompt, model="gemini-1.5-pro")
             generated_lore = send_prompt(prompt, model=self.model)
-
-            # Save the generated lore to a file
-            with open("generated_lore.md", "w") as file:
-                 file.write(generated_lore)
-
-            # Print the entire generated response to ensure it is complete
+            write_file("generated_lore.md", generated_lore)
             print("Generated Lore Response:")
             print(generated_lore)
-
 
         except Exception as e:
             messagebox.showerror("Error", f"An error occurred: {str(e)}")
