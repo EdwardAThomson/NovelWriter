@@ -15,6 +15,10 @@ Running this code requires API keys for the specific LLMs you intend to use (e.g
 
 While many steps are automated, the output often serves as a strong starting point that can be further refined by the author.
 
+## Quick Start
+
+**New to NovelWriter?** Check out our [**User Guide**](./docs/user_guide.md) for a step-by-step walkthrough of creating your first novel!
+
 ## Setup and Installation
 
 1.  **Clone the Repository:**
@@ -63,11 +67,10 @@ It might easiest to open the files in an IDE and let it handle virtual environme
 
 Located in the root directory, this script is used to combine all generated chapter markdown files (typically found in `current_work/chapters/`) into a single markdown file. The output file is named after the novel's title (if found in `parameters.txt`) or defaults to `combined_novel.md`, and is saved within the `current_work/chapters/` directory. This is useful for creating a complete manuscript from individual chapter files.
 
-## Detailed Documentation
+## Documentation
 
-**For a comprehensive understanding of the application's workflow, modules, file formats, and user guidance, please refer to our [Detailed Documentation here](./docs/README.md).**
-
-The new documentation in the `docs` directory provides the most up-to-date and in-depth information about the project.
+- **[User Guide](./docs/user_guide.md)** - Step-by-step instructions for using the application
+- **[Detailed Documentation](./docs/README.md)** - Comprehensive technical documentation, workflows, and file formats
 
 ## The Generation Process
 
