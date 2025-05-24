@@ -2,477 +2,817 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from ai_helper import send_prompt
-from rag_helper import upsert_lore_text, retrieve_relevant_lore
+# from rag_helper import upsert_text
 import json
-from helper_fns import open_file, write_file
+import os
+import logging
+from helper_fns import open_file, write_file, validate_json_schema, read_json, write_json, validate_json, save_prompt_to_file
+from Generators.SciFiGenerator import generate_universe, print_factions, save_factions_to_file, _generate_base_name, _generate_named_character
+from Generators.CharacterGenerator import generate_main_characters, print_character, save_characters_to_file
+import random
+from datetime import datetime
 
-class LoreUI:
-    def __init__(self, parent):
+class Lore:
+    def __init__(self, parent, app):
         self.parent = parent
+        self.app = app
 
-        # self.model="gpt-4o"
-        self.model="gemini-2.0-pro-exp-02-05"
-        # gemini-1.5-pro
-        # gemini-2.0-pro-exp-02-05
+        # Create main frame
+        self.main_frame = ttk.Frame(parent)
+        self.main_frame.pack(expand=True, fill='both', padx=10, pady=5)
+        
+        # Add genre/subgenre display at top
+        self.genre_label = ttk.Label(
+            self.main_frame, 
+            text="Current Genre: Not Selected",
+            font=("Arial", 12, "bold")
+        )
+        self.genre_label.pack(pady=10)
+        
+        # Update the label initially
+        self.update_genre_display()
 
         # Frame setup for relationships UI
         self.lore_frame = ttk.Frame(parent)
         self.lore_frame.pack(expand=True, fill="both")
 
+        # Logger setup - LoreUI gets app instance, which has logger
+        # So, we can use self.app.logger directly.
+        # For standalone testing or if app is not passed, a fallback can be used:
+        # self.logger = app.logger if app and hasattr(app, 'logger') else logging.getLogger(__name__)
+        # if not (app and hasattr(app, 'logger')):
+        #     logging.basicConfig(level=logging.INFO)
+        #     self.logger.info("LoreUI initialized without main app logger. Using default logger for this module.")
+
         # Title Label
         self.title_label = ttk.Label(self.lore_frame, text="Lore Builder", font=("Helvetica", 16))
         self.title_label.pack(pady=10)
 
-        #Buttons
-        # Generate Tech Button
-        self.tech_button = ttk.Button(self.lore_frame, text="Generate Tech Lore", command=self.generate_tech_lore)
-        self.tech_button.pack(pady=20)
+        # Add parameter input frame
+        self.param_frame = ttk.LabelFrame(self.lore_frame, text="Story Parameters")
+        self.param_frame.pack(pady=10, padx=10, fill="x")
 
-        # Generate Planet List Button
-        self.planet_button = ttk.Button(self.lore_frame, text="Generate Planet List", command=self.generate_planet_list)
-        self.planet_button.pack(pady=20)
+        # Number of Factions input
+        self.faction_frame = ttk.Frame(self.param_frame)
+        self.faction_frame.pack(fill="x", padx=5, pady=5)
+        ttk.Label(self.faction_frame, text="Number of Factions (Max 10):").pack(side="left", padx=5)
+        self.num_factions_var = tk.StringVar(value="3")
+        self.num_factions_entry = ttk.Entry(self.faction_frame, textvariable=self.num_factions_var, width=5)
+        self.num_factions_entry.pack(side="left")
 
-        # Improve Factions Button
+        # Number of Characters input
+        self.char_frame = ttk.Frame(self.param_frame)
+        self.char_frame.pack(fill="x", padx=5, pady=5)
+        ttk.Label(self.char_frame, text="Number of Characters (Max 10):").pack(side="left", padx=5)
+        self.num_chars_var = tk.StringVar(value="5")
+        self.num_chars_entry = ttk.Entry(self.char_frame, textvariable=self.num_chars_var, width=5)
+        self.num_chars_entry.pack(side="left")
+
+        # Number of Planets input - create frame but don't pack it yet
+        # self.planet_frame = ttk.Frame(self.param_frame)
+        # ttk.Label(self.planet_frame, text="Number of Planets:").pack(side="left", padx=5)
+        # self.num_planets_var = tk.StringVar(value="5")
+        # self.num_planets_entry = ttk.Entry(self.planet_frame, textvariable=self.num_planets_var, width=5)
+        # self.num_planets_entry.pack(side="left")
+
+        # Additional parameter frame
+        self.extra_param_frame = ttk.Frame(self.param_frame)
+        self.extra_param_label = ttk.Label(self.extra_param_frame, text="")
+        self.extra_param_label.pack(side="left", padx=5)
+        self.extra_param_var = tk.StringVar()
+        self.extra_param_entry = ttk.Entry(self.extra_param_frame, textvariable=self.extra_param_var, width=15)
+        self.extra_param_entry.pack(side="left")
+
+        # Call update_extra_parameter after all frames are created
+        # self.update_extra_parameter() # REMOVED: This call was premature, before self.planet_button is created.
+
+        # Buttons
+        # Generate Factions Button (moved up)
         self.factions_button = ttk.Button(self.lore_frame, text="Generate Factions", command=self.generate_factions)
         self.factions_button.pack(pady=20)
 
-        # Generate and Improve Characters Buttons
+        # Generate and Improve Characters Buttons (moved up)
         self.characters_button = ttk.Button(self.lore_frame, text="Generate Characters", command=self.generate_characters)
         self.characters_button.pack(pady=20)
 
-        self.improve_characters_button = ttk.Button(self.lore_frame, text="Improve Characters and Relationships", command=self.improve_characters)
-        self.improve_characters_button.pack(pady=20)
+        # Generate Planet List Button (moved up) - don't pack yet
+        self.planet_button = ttk.Button(self.lore_frame, text="Generate Planet List", command=self.generate_planet_list)
+        # Don't pack here - let update_extra_parameter handle it
 
+        # Generate Lore Button
+        self.generate_lore_button = ttk.Button(self.lore_frame, text="Generate Lore", command=self.generate_lore)
+        self.generate_lore_button.pack(pady=20)
+
+        # Generate Tech Button
+        # self.tech_button = ttk.Button(self.lore_frame, text="Generate Tech Lore", command=self.generate_tech_lore)
+        # self.tech_button.pack(pady=20)
+
+        # Improve Characters Button
+        # self.improve_characters_button = ttk.Button(self.lore_frame, text="Improve Characters and Relationships", command=self.improve_characters)
+        # self.improve_characters_button.pack(pady=20)
+
+        # Enhance Main Characters Button
         self.main_char_enh_button = ttk.Button(self.lore_frame, text="Enhance main characters", command=self.main_character_enhancement)
         self.main_char_enh_button.pack(pady=20)
 
-    def validate_json(self, response_text, schema):
-        """
-        Generic JSON validation function.
+        # Suggest Titles Button (New)
+        self.suggest_titles_button = ttk.Button(self.lore_frame, text="Suggest Story Titles", command=self.suggest_titles)
+        self.suggest_titles_button.pack(pady=20) # Placed after main_char_enh_button for now
 
-        :param response_text: The JSON text received from LLM.
-        :param schema: A dictionary defining required fields and their expected types.
-        :return: Parsed JSON object if valid, raises ValueError otherwise.
-        """
+        # Call update_extra_parameter after all UI elements are created
+        self.update_extra_parameter()  # This will handle initial visibility of planet button and frame
+
+    def update_genre_display(self):
+        """Update the genre/subgenre display label"""
         try:
-            data = json.loads(response_text)  # Convert text to JSON
-
-            for key, value_type in schema.items():
-                if key not in data:
-                    raise ValueError(f"Invalid JSON format: Missing required key '{key}'.")
-                if not isinstance(data[key], value_type):
-                    raise ValueError(f"Invalid JSON format: '{key}' should be of type {value_type}.")
-
-            return data  # Return the valid JSON object
-
-        except json.JSONDecodeError:
-            raise ValueError("Invalid JSON: Could not parse response.")
-
-    ### Generation Functions -- leveraging LLMs for content generation
-
-    # Generate technology lore
-    def generate_tech_lore(self):
-        print("Generating Tech Lore")
-
-        try:
-            lore_data = open_file("generated_lore.md")
-            parameters = open_file("parameters.txt")
-
-            # Tech generator
-            prompt = (
-               f"I am writing a sci-fi novel using the following parameters:\n\n"
-               f"{parameters}\n\n"
-               f"Please help me generate a list of cool technology with descriptions.\n"
-               f"Please see the following background information of this story:\n\n"
-               f"{lore_data}"
+            params_ui = self.app.param_ui
+            genre = params_ui.genre_var.get()
+            subgenre = params_ui.subgenre_var.get()
+            self.genre_label.config(
+                text=f"Current Genre: {genre} - {subgenre}"
             )
+        except AttributeError:
+            self.genre_label.config(text="Current Genre: Not Connected")
 
-            # prompt = """
-            # I am writing a sci-fi novel, and I need a structured list of futuristic technologies.
-            #
-            # Please output the response in JSON format with the following structure:
-            #
-            # {
-            #     "technologies": [
-            #         {
-            #             "name": "Technology Name",
-            #             "description": "Brief description of what it does.",
-            #             "category": "Category (e.g., Energy, Cybernetics, Weapons, etc.)",
-            #             "applications": ["List of applications"],
-            #             "inventor": "Who invented it (or UNKNOWN if not relevant)",
-            #             "era": "Time period in the story when it was developed"
-            #         }
-            #     ]
-            # }
-            #
-            # Generate 5 unique technologies based on these criteria.
-            # """
+    def update_extra_parameter(self):
+        """Update UI based on selected subgenre"""
+        self.update_genre_display()
+        try:
+            subgenre = self.app.param_ui.subgenre_var.get()
+            
+            # Handle planet input and button visibility - hide both for Space Opera
+            # if subgenre == "Space Opera":
+            #     if self.planet_frame.winfo_manager():  # If currently visible
+            #         self.planet_frame.pack_forget()
+            #     if self.planet_button.winfo_manager():  # If button visible
+            #         self.planet_button.pack_forget()
+            # else:
+            #     if not self.planet_frame.winfo_manager():  # If currently hidden
+            #         self.planet_frame.pack(fill="x", padx=5, pady=5, after=self.char_frame)
+            #     if not self.planet_button.winfo_manager():  # If button hidden
+            #         self.planet_button.pack(pady=20, after=self.characters_button)
+            
+            # Handle other extra parameters
+            extra_params = {
+                "Cyberpunk": "Technological Focus:",
+                "Military Sci-Fi": "Conflict Scale:",
+                "Post-Apocalyptic": "Disaster Type:",
+                "Hard Science Fiction": "Scientific Focus:",
+                "Time Travel": "Time Period Range:",
+                "Alternate History": "Divergence Point:",
+                "Dystopian": "Social Issue Focus:",
+            }
 
-
-            print("Prompt... [tech lore]")
-            print(prompt)
-            response = send_prompt(prompt, model=self.model)
-            print(response)
-            write_file("technology.md", response)
-            print("Generated Technology")
-
-            # TODO: fix this later -- adding RAG
-            # VectorDB upsert: Store the new lore for later retrieval
-            # upsert_lore_text("technology.md", response, metadata={"type": "technology"})
-
-            messagebox.showinfo("Success", "Technology background generated and saved successfully.")
+            if subgenre != "Space Opera" and subgenre in extra_params:
+                self.extra_param_label.config(text=extra_params[subgenre])
+                self.extra_param_frame.pack(fill="x", padx=5, pady=5)
+            else:
+                self.extra_param_frame.pack_forget()
 
         except Exception as e:
-            print(f"Failed to generate tech lore: {e}")
-            messagebox.showerror("Error", f"Failed to generate tech lore: {str(e)}")
+            self.app.logger.error(f"Failed to update extra parameter: {e}", exc_info=True)
 
+# Generation functions
 
-    # def generate_tech_lore(self):
-    #     print("Generating Tech Lore")
-    #
-    #     try:
-    #         lore_data = self.open_file("generated_lore.md")
-    #         parameters = self.open_file("parameters.txt")
-    #
-    #         # LLM prompt
-    #         prompt = """
-    #         I am writing a sci-fi novel, and I need a structured list of futuristic technologies.
-    #
-    #         Please output the response in JSON format with the following structure:
-    #
-    #         {
-    #             "technologies": [
-    #                 {
-    #                     "name": "Technology Name",
-    #                     "description": "Brief description of what it does.",
-    #                     "category": "Category (e.g., Energy, Cybernetics, Weapons, etc.)",
-    #                     "applications": ["List of applications"],
-    #                     "inventor": "Who invented it (or UNKNOWN if not relevant)",
-    #                     "era": "Time period in the story when it was developed"
-    #                 }
-    #             ]
-    #         }
-    #
-    #         Generate 5 unique technologies based on these criteria.
-    #         """
-    #
-    #         print("Prompt... [tech lore]")
-    #         response = send_prompt(prompt, model=self.model)
-    #         print(response)
-    #
-    #         # Define schema for validation
-    #         tech_schema = {
-    #             "technologies": list
-    #         }
-    #
-    #         # Validate JSON response
-    #         valid_data = self.validate_json(response, tech_schema)
-    #
-    #         # Save validated JSON to file
-    #         with open("technology.json", "w") as file:
-    #             json.dump(valid_data, file, indent=4)
-    #
-    #         print("Generated Technology")
-    #
-    #         # VectorDB upsert: Store the new lore for later retrieval
-    #         # upsert_lore_text("technology.json", json.dumps(valid_data), metadata={"type": "technology"})
-    #
-    #         messagebox.showinfo("Success", "Technology background generated and saved successfully.")
-    #
-    #     except ValueError as e:
-    #         print(f"JSON Validation Error: {e}")
-    #         messagebox.showerror("Error", f"Invalid JSON format: {str(e)}")
-    #
-    #     except Exception as e:
-    #         print(f"Failed to generate tech lore: {e}")
-    #         messagebox.showerror("Error", f"Failed to generate tech lore: {str(e)}")
-
-
-
-    # Generate list of planets
+    # Placeholder for generate_planet_list method
+    # TODO: Will possibly remove this
     def generate_planet_list(self):
-        print("Generating Planet List")
+        self.app.logger.info("Lore.generate_planet_list called, but it is not yet implemented.")
+        messagebox.showinfo("Not Implemented", "The 'Generate Planet List' feature is not yet implemented.")
+        pass
 
-        try:
-            lore_data = open_file("generated_lore.md")
-            parameters = open_file("parameters.txt")
-
-            # Planet list generation
-            prompt = (
-                f"I am writing a sci-fi novel using the following parameters:\n\n"
-                f"{parameters}\n\n"
-                f"Please generate a list of planets in markdown format.\n"
-                f"If relevant please see the following background information of this story:\n\n"
-                f"{lore_data}"
-            )
-
-            print("Prompt... [list of planets]")
-            print(prompt)
-            response = send_prompt(prompt, model=self.model)
-            print(response)
-            write_file("planets.md", response)
-            print("Generated Planet List")
-            messagebox.showinfo("Success", "Generated planet list and saved successfully.")
-
-        except Exception as e:
-            print(f"Failed to generate planet list: {e}")
-            messagebox.showerror("Error", f"Failed to generate planet list: {str(e)}")
-
-
-    # Generate list of factions
-    # Then match the factions to the planets
+    # Generate list of factions and some of their details
     def generate_factions(self):
-        print("Generate Factions (now). Then match factions and planets (after)")
-
         try:
-            lore_data = open_file("generated_lore.md")
-            parameters = open_file("parameters.txt")
+            # Get the number of factions from the UI
+            num_factions = int(self.num_factions_var.get())
+            
+            # Get the selected gender bias percentages from ParametersUI
+            params = self.app.param_ui.get_current_parameters()
+            female_percentage = params.get("female_percentage", 50) # Default to 50 if not found
+            male_percentage = params.get("male_percentage", 50)   # Default to 50 if not found
+            
+            self.app.logger.info(f"Generating factions (using gender bias: Female {female_percentage}%, Male {male_percentage}%)")
+            
+            # Call generate_universe with the number of factions and the numerical gender bias percentages
+            factions = generate_universe(num_factions=num_factions, female_percentage=female_percentage, male_percentage=male_percentage)
+            
+            # Print factions to console for debugging
+            # print_factions(factions=factions) # Replaced by logger below
+            if factions:
+                self.app.logger.info(f"Generated {len(factions)} factions. First faction example: {factions[0].get('faction_name', 'N/A')}")
+                for i, faction_data in enumerate(factions):
+                    self.app.logger.debug(f"Faction {i+1} Summary:")
+                    self.app.logger.debug(f"  Name: {faction_data.get('faction_name', 'N/A')}")
+                    self.app.logger.debug(f"  Profile: {faction_data.get('faction_profile', 'N/A')}")
+                    self.app.logger.debug(f"  Systems: {len(faction_data.get('systems', []))}")
+            else:
+                self.app.logger.warning("Faction generation returned no factions.")
 
-            # Faction generation
-            prompt = (
-                f"I am writing a sci-fi novel using the following parameters:\n\n"
-                f"{parameters}\n\n"
-                f"Please generate a list of factions with important details in markdown format.\n"
-                f"Please see the following background information of this story:\n\n"
-                f"{lore_data}"
-            )
+            # Determine the output directory from the app settings
+            output_dir = self.app.get_output_dir()
+            os.makedirs(output_dir, exist_ok=True) # Ensure the directory exists
+            
+            # Construct the full filepath for factions.json
+            factions_filepath = os.path.join(output_dir, "factions.json")
+            
+            # Save factions to file
+            save_factions_to_file(factions=factions, filename=factions_filepath) # Pass full path
 
-            print("prompt... [Generating Factions]")
-            print(prompt)
-            response = send_prompt(prompt, model=self.model)
-            print(response)
-            write_file("factions.md", response)
-            print("Generated Factions")
+            self.app.logger.info(f"Generated factions and saved to {factions_filepath}")
+            messagebox.showinfo("Success", "Generated factions and saved successfully.")
 
+        except AttributeError as ae:
+            # This might happen if parameters_ui or gender_bias_var is not found
+            self.app.logger.error(f"AttributeError in generate_factions: {ae}. UI element access issue?", exc_info=True)
+            messagebox.showerror("Error", f"UI Element Access Error: {str(ae)}")
         except Exception as e:
-            print(f"Failed to generate faction details: {e}")
+            self.app.logger.error(f"Failed to generate faction details: {e}", exc_info=True)
             messagebox.showerror("Error", f"Failed to generate faction details: {str(e)}")
-
-
-        # Match factions to planets
-        print("Now: Matching Factions and Planets")
-
-        try:
-            lore = open_file("generated_lore.md") # need to replace this in other places too
-            factions = open_file("factions.md")
-            planets = open_file("planets.md")
-
-            # Faction and planet matching
-            prompt = (
-                f"I am writing a sci-fi novel using the following background lore:\n\n"
-                f"{lore}\n"
-                f"Please help me to match the list of planets to the list of factions.\n"
-                f"Here is the list of planets:\n\n"
-                f"{planets}\n\n"
-                f"And here is the list of factions:\n\n"
-                f"{factions}.\n\n"
-                f"Please respond in markdown format."
-            )
-
-            print("prompt... [Matching Factions and Planets]")
-            print(prompt)
-            response = send_prompt(prompt, model=self.model)
-            print(response)
-            write_file("faction_planet_match.md", response)
-            print("Matched Factions with Planets")
-            # upsert
-            messagebox.showinfo("Success", "Match factions with planets. File saved successfully.")
-
-        except Exception as e:
-            print(f"Failed to generate faction details: {e}")
-            messagebox.showerror("Error", f"Failed to match faction and planets. Details: {str(e)}")
 
 
     # Generate a list of characters
     # Then match characters to the list of factions
+    # Also generates relationships between characters?
     def generate_characters(self):
-        print("Now: Generate Characters. After: Match characters and factions.")
-
         try:
-            lore_data = open_file("generated_lore.md")
-            parameters = open_file("parameters.txt")
-
-            # Character Generation
-            prompt = (
-                f"I am writing a sci-fi novel using the following parameters:\n\n"
-                f"{parameters}\n\n"
-                f"Please generate a list of characters in markdown format.\n"
-                f"Please include their goals, motivations, flaws, how they will grow throughout the story.\n"
-                f"Please see the following background information of this story:\n\n"
-                f"{lore_data}"
-            )
-
-            print("prompt... [Generating characters]")
-            print(prompt)
-            response = send_prompt(prompt, model=self.model)
-            print(response)
-            write_file("characters.md", response)
-            print("Generated Characters")
+            num_chars = int(self.num_chars_var.get())
+            self.app.logger.info(f"Attempting to generate {num_chars} characters.")
+            
+            # Get the selected gender bias percentages from ParametersUI
+            params = self.app.param_ui.get_current_parameters()
+            female_percentage = params.get("female_percentage", 50)
+            male_percentage = params.get("male_percentage", 50)
+            
+            self.app.logger.info(f"Using gender bias for character generation: Female {female_percentage}%, Male {male_percentage}%")
+            
+            # Generate characters using the CharacterGenerator
+            characters = generate_main_characters(num_characters=num_chars, female_percentage=female_percentage, male_percentage=male_percentage)
+            
+            if not characters:
+                self.app.logger.error("Failed to generate characters. generate_main_characters returned empty.")
+                messagebox.showerror("Error", "Failed to generate characters.")
+                return
+            
+            # Print to console for debugging
+            # for char in characters:
+            #     print_character(char) # Replaced by logger below
+            self.app.logger.info(f"Successfully generated {len(characters)} characters.")
+            for i, char_data in enumerate(characters):
+                # char_data is a Character object, not a dict. Access attributes directly or use getattr.
+                char_name = getattr(char_data, 'name', 'N/A')
+                char_role = getattr(char_data, 'role', 'N/A')
+                self.app.logger.debug(f"Character {i+1}: {char_name} ({char_role})")
+            
+            # --- Add Gender Count for Main Characters ---
+            female_main_char_count = 0
+            male_main_char_count = 0
+            for char_obj in characters:
+                if hasattr(char_obj, 'gender'):
+                    if char_obj.gender == "Female":
+                        female_main_char_count += 1
+                    elif char_obj.gender == "Male":
+                        male_main_char_count += 1
+            
+            total_main_chars = len(characters)
+            if total_main_chars > 0:
+                female_actual_percentage = (female_main_char_count / total_main_chars) * 100
+                male_actual_percentage = (male_main_char_count / total_main_chars) * 100
+                self.app.logger.info(f"MAIN CHARACTER GENDER SUMMARY: Total={total_main_chars}, Females={female_main_char_count} ({female_actual_percentage:.2f}%), Males={male_main_char_count} ({male_actual_percentage:.2f}%)")
+                self.app.logger.info(f"  (Expected based on input: Female {female_percentage}%, Male {male_percentage}%)")
+            else:
+                self.app.logger.info("MAIN CHARACTER GENDER SUMMARY: No main characters generated to summarize.")
+            # --- End Gender Count ---
+            
+            # Save to file
+            output_dir = self.app.get_output_dir()
+            os.makedirs(output_dir, exist_ok=True)
+            characters_filepath = os.path.join(output_dir, "characters.json")
+            
+            # Save using the CharacterGenerator's save function
+            save_characters_to_file(characters, filename=characters_filepath)
+            
+            self.app.logger.info(f"Generated main characters and saved to {characters_filepath}")
+            messagebox.showinfo("Success", "Generated characters and saved successfully.")
 
         except Exception as e:
-            print(f"Failed to generate character details: {e}")
+            self.app.logger.error(f"Failed to generate character details: {e}", exc_info=True)
             messagebox.showerror("Error", f"Failed to generate character details: {str(e)}")
 
 
-        # Match People to factions
-        #
-        print("Now: Match Characters and Factions")
+
+   ### Generation Functions -- leveraging LLMs for content generation
+
+
+    def generate_lore(self):
+        """Generate lore using an internally constructed prompt and LLM"""
+        self.app.logger.info("Lore generation process started.")
+        selected_model = self.app.get_selected_model()
+        output_dir = self.app.get_output_dir()
+        os.makedirs(output_dir, exist_ok=True)
+        self.app.logger.info(f"Using model: {selected_model} for lore generation.")
+        self.app.logger.info(f"Output directory for lore files: {output_dir}")
 
         try:
-            character_data = open_file("characters.md")
-            factions = open_file("factions.md")
+            # Define and create the prompts subdirectory
+            prompts_subdir = os.path.join(output_dir, "prompts")
+            os.makedirs(prompts_subdir, exist_ok=True)
+            self.app.logger.info(f"Ensured prompts subdirectory exists at: {prompts_subdir}")
 
-            # Character Generation
-            prompt = (
-                f"I am writing a sci-fi novel.\n"
-                f"Please help me to match the list of characters with a list of factions.\n"
-                f"Here is the list of characters:\n\n"
-                f"{character_data}\n\n"
-                f"Here is the list of factions:\n\n"
-                f"{factions}\n\n"
-                f"Please respond in markdown format."
-            )
+            # --- Load necessary data ---
+            parameters_txt_path = os.path.join(output_dir, "parameters.txt")
+            characters_json_path = os.path.join(output_dir, "characters.json")
+            factions_json_path = os.path.join(output_dir, "factions.json")
 
-            print("prompt... [matching characters with factions]")
-            print(prompt)
-            response = send_prompt(prompt, model=self.model)
-            print(response)
-            write_file("characters_and_factions.md", response)
-            print("Matching Characters and Factions")
-            #upsert
-            messagebox.showinfo("Success", "Matching characters and factions. File saved successfully.")
+            story_params = {}
+            try:
+                if os.path.exists(parameters_txt_path):
+                    params_content = open_file(parameters_txt_path)
+                    for line in params_content.splitlines():
+                        if ":" in line:
+                            key, value = line.split(":", 1)
+                            story_params[key.strip()] = value.strip()
+                    self.app.logger.info(f"Loaded parameters from {parameters_txt_path}")
+                else:
+                    self.app.logger.warning(f"Parameters file not found: {parameters_txt_path}. Proceeding without detailed parameters.")
+            except Exception as e:
+                self.app.logger.error(f"Error loading parameters from {parameters_txt_path}: {e}", exc_info=True)
+
+
+            characters = []
+            try:
+                all_character_data = read_json(characters_json_path)
+                characters = all_character_data.get("characters", [])
+                if not characters:
+                    self.app.logger.warning(f"No characters found in {characters_json_path}")
+                else:
+                    self.app.logger.info(f"Loaded {len(characters)} characters from {characters_json_path}")
+            except FileNotFoundError:
+                self.app.logger.warning(f"Character file not found: {characters_json_path}")
+            except (json.JSONDecodeError, ValueError) as e:
+                self.app.logger.error(f"Error loading character data from {characters_json_path}: {e}", exc_info=True)
+
+            factions = []
+            try:
+                factions_data = read_json(factions_json_path) # factions_data is a list of faction dicts
+                if factions_data: # Check if factions_data is not None and not empty
+                    factions = factions_data
+                    self.app.logger.info(f"Loaded {len(factions)} factions from {factions_json_path}")
+                else:
+                    self.app.logger.warning(f"No factions found or empty list in {factions_json_path}")
+            except FileNotFoundError:
+                self.app.logger.warning(f"Faction file not found: {factions_json_path}")
+            except (json.JSONDecodeError, ValueError) as e:
+                self.app.logger.error(f"Error loading faction data from {factions_json_path}: {e}", exc_info=True)
+
+            # --- Step 1: Construct the base prompt ---
+            self.app.logger.info("Constructing base lore prompt...")
+            prompt_lines = [
+                "You are an AI assistant helping to generate the foundational lore for a new story.",
+                "Based on the provided parameters, character summaries, and faction summaries, please generate a rich and detailed background for the story's universe. This should include:",
+                # "- Key historical events.",
+                # "- Cultural details.",
+                # "- Technological level and unique aspects.",
+                # "- Potential conflicts and mysteries.",
+                # "- Initial plot points or hooks.",
+                "Please ensure the lore is consistent with all provided information."
+            ]
+
+            prompt_lines.append("\n## Story Parameters:")
+            if story_params:
+                for key, value in story_params.items():
+                    prompt_lines.append(f"- {key}: {value}")
+            else:
+                prompt_lines.append("- (No parameters loaded)")
+
+            prompt_lines.append("\n## Character Summaries:")
+            if characters:
+                for char_dict in characters:
+                    name = char_dict.get('name', 'Unknown Character')
+                    role = char_dict.get('role', 'Unknown Role')
+                    prompt_lines.append(f"- {name} ({role})")
+            else:
+                prompt_lines.append("- (No characters loaded for summary)")
+
+            prompt_lines.append("\n## Faction Summaries:")
+            prompt_lines.append("\nPlease focus on the top 2 factions. The other factions will be handled later.\n")
+            if factions:
+                for faction_dict in factions:
+                    faction_name = faction_dict.get('faction_name', 'Unknown Faction')
+                    prompt_lines.append(f"- {faction_name}")
+            else:
+                prompt_lines.append("- (No factions loaded for summary)")
+            
+            # Initial prompt content is now built
+            prompt = "\n".join(prompt_lines)
+            
+            # --- Step 2: Enhance the prompt with detailed character and faction information ---
+            self.app.logger.info("Enhancing prompt with faction capitals and detailed character info...")
+            if factions:
+                # Add faction capitals section
+                faction_section = "\n## Faction Capitals:\n"
+                for faction in factions:
+                    faction_name = faction.get("faction_name", "Unknown Faction")
+                    # Find the capital system and planet
+                    capital_system = next((sys for sys in faction.get("systems", []) if sys.get("is_capital_system", False)), None)
+                    if capital_system:
+                        capital_planet = next((planet for planet in capital_system.get("habitable_planets", []) 
+                                            if planet.get("is_capital", False)), None)
+                        if capital_planet:
+                            faction_section += f"- {faction_name}: {capital_planet.get('name', 'N/A')} in {capital_system.get('name', 'N/A')}\n"
+                            stats = capital_planet.get("stats", {})
+                            faction_section += f"  - Population: {stats.get('population', 'Unknown')}\n"
+                            faction_section += f"  - Climate: {stats.get('climate', 'Unknown')}\n"
+                            faction_section += f"  - Infrastructure: {stats.get('infrastructure', {}).get('description', 'Unknown')}\n"
+                prompt += faction_section
+
+            if characters:
+                # Add a detailed character section to the prompt
+                character_section = "\n## Detailed Character Information:\n"
+                
+                # Sort characters by role priority
+                role_priority = {"protagonist": 0, "deuteragonist": 1, "antagonist": 2}
+                # Ensure characters is a list of dicts here when loaded from JSON
+                sorted_chars = sorted(characters, key=lambda x: role_priority.get(x.get("role", "").lower(), 99))
+                
+                for char_dict in sorted_chars: # char_dict is a dictionary from characters.json
+                    char_name = char_dict.get('name', 'Unknown') # Use .get() for dict
+                    char_role = char_dict.get('role', 'Unknown Role') # Use .get() for dict
+                    char_section_detail = f"\n### {char_name} ({char_role}):\n"
+                    
+                    # Add basic information
+                    basic_info = []
+                    for key in ['gender', 'age', 'title', 'occupation', 'faction', 'faction_role', 
+                              'homeworld', 'home_system']:
+                        value = char_dict.get(key)
+                        if value:
+                            basic_info.append(f"- {key.replace('_', ' ').capitalize()}: {value}")
+                    
+                    # Add character traits
+                    traits = []
+                    for key in ['goals', 'motivations', 'flaws', 'strengths', 'arc']:
+                        value = char_dict.get(key)
+                        if value:
+                            if isinstance(value, list):
+                                traits.append(f"- {key.replace('_', ' ').capitalize()}: {', '.join(value)}")
+                            else:
+                                traits.append(f"- {key.replace('_', ' ').capitalize()}: {value}")
+                    
+                    family_data = char_dict.get('family', {})
+                    if family_data:
+                        family_info_list = ["- Family:"]
+                        parents = family_data.get('parents', [])
+                        if parents:
+                            parents_str = ", ".join([f"{p.get('name', 'N/A')} ({p.get('relation', 'N/A')}, {p.get('gender', 'N/A')}, {p.get('status', 'N/A')})" 
+                                                   for p in parents])
+                            family_info_list.append(f"  - Parents: {parents_str}")
+                        siblings = family_data.get('siblings', [])
+                        if siblings:
+                            siblings_str = ", ".join([f"{s.get('name', 'N/A')} ({s.get('relation', 'N/A')}, {s.get('gender', 'N/A')})" 
+                                                    for s in siblings])
+                            family_info_list.append(f"  - Siblings: {siblings_str}")
+                        spouse = family_data.get('spouse')
+                        if spouse and isinstance(spouse, dict):
+                            family_info_list.append(f"  - Spouse: {spouse.get('name', 'N/A')} ({spouse.get('gender', 'N/A')})")
+                        children_val = family_data.get('children', [])
+                        if children_val:
+                            children_str = ", ".join([f"{c.get('name', 'N/A')} ({c.get('relation', 'N/A')}, {c.get('gender', 'N/A')})" 
+                                                    for c in children_val])
+                            family_info_list.append(f"  - Children: {children_str}")
+                        # Only extend traits if family_info_list has more than just the "- Family:" header
+                        if len(family_info_list) > 1:
+                             traits.extend(family_info_list)
+                    
+                    # Combine all information
+                    char_section_detail += "\n".join(basic_info + traits)
+                    character_section += char_section_detail
+
+                # Add the character section to the prompt
+                prompt += character_section
+                
+            prompt += "\n\n## Final Instructions:\nPlease ensure that the generated lore is consistent with all the character details and faction information provided above, particularly regarding gender, relationships, and personal backgrounds. The lore should reflect and respect these attributes while building the broader universe context."
+            prompt += "\n\nImportant: Please generate only the lore, background, and initial plot points as requested. Do NOT include a title for the story in this response. A title will be generated and managed separately."
+            prompt += "\n\nNow, generate the lore:"
+
+            # --- Step 3: Save the final assembled prompt to a single, non-timestamped file ---
+            main_lore_prompt_filepath = os.path.join(prompts_subdir, "main_lore_prompt.md")
+            try:
+                write_file(main_lore_prompt_filepath, prompt)
+                self.app.logger.info(f"Definitive Main Lore Generation Prompt (length {len(prompt)}) saved to: {main_lore_prompt_filepath}")
+            except IOError as e_write:
+                self.app.logger.error(f"Failed to write Main Lore Generation Prompt to {main_lore_prompt_filepath}: {e_write}", exc_info=True)
+                messagebox.showerror("Error", f"Failed to save lore prompt to {main_lore_prompt_filepath}")
+                return False # Stop if we can't save the prompt
+
+            # --- Step 4: Send the enhanced prompt to the LLM ---
+            self.app.logger.info(f"Sending main lore prompt from {main_lore_prompt_filepath} to LLM ({selected_model})...")
+            lore_text = send_prompt(prompt, model=selected_model)
+            
+            if not lore_text:
+                self.app.logger.error(f"Failed to generate lore from LLM ({selected_model}). Received no response.")
+                messagebox.showerror("Error", "Lore generation failed (LLM).")
+                return False
+            
+            self.app.logger.info(f"Lore successfully generated by LLM. Response length: {len(lore_text)} chars.")
+            # --- Step 5: Save the generated lore ---
+            self.app.logger.info("Saving generated lore...")
+            generated_lore_filepath = os.path.join(output_dir, "generated_lore.md")
+            write_file(generated_lore_filepath, lore_text)
+            
+            self.app.logger.info(f"Lore successfully generated and saved to {generated_lore_filepath}")
+            messagebox.showinfo("Success", f"Lore generated and saved to {generated_lore_filepath}.\n\nPrompt used is in {main_lore_prompt_filepath}")
+            return True
 
         except Exception as e:
-            print(f"Failed to generate character details: {e}")
-            messagebox.showerror("Error", f"Failed to generate character details: {str(e)}")
+            self.app.logger.error(f"Error during lore generation process: {e}", exc_info=True)
+            messagebox.showerror("Error", f"Error in lore generation: {e}")
+            return False
 
-    # Add a description for each character
-    def improve_characters(self):
-        print("Now: Improve Characters. After: Figure out relationships.")
+
+    # New function to suggest titles
+    def suggest_titles(self):
+        self.app.logger.info("Title suggestion process started.")
+        selected_model = self.app.get_selected_model()
+        output_dir = self.app.get_output_dir() # This is typically "current_work"
+        # The save_prompt_to_file function will handle creating the 'prompts' subdirectory within output_dir.
+        # os.makedirs(os.path.join(output_dir, "prompts"), exist_ok=True) # Ensured by save_prompt_to_file
+
+        lore_file_path = os.path.join(output_dir, "generated_lore.md")
+        params_file_path = os.path.join(output_dir, "parameters.txt")
 
         try:
-            lore_data = open_file("generated_lore.md")
-            character_data = open_file("characters.md")
-            match_data = open_file("characters_and_factions.md")
+            # 1. Load Lore Content
+            if not os.path.exists(lore_file_path):
+                self.app.logger.error(f"Lore file not found at {lore_file_path}. Cannot suggest titles.")
+                messagebox.showerror("Error", f"Lore file ({lore_file_path}) not found. Please generate lore first.")
+                return
+            lore_content = open_file(lore_file_path)
+            self.app.logger.info(f"Loaded lore content from {lore_file_path} for title suggestion.")
 
-            # Character Generation
-            prompt = (
-                f"I am writing a sci-fi novel with the following background information :\n\n"
-                f"{lore_data}\n\n"
-                f"Please review the list of characters:\n"
-                f"{character_data}\n\n"
-                f"Please also review the following information that matches characters with factions:\n\n"
-                f"{match_data}"
-                f"Please add a description for each character.\n"
-            )
+            # 2. Load Parameters (for genre, subgenre, themes - optional but good context)
+            story_genre = "fiction"  # Default
+            story_subgenre = ""    # Default
+            story_themes = ""      # Default to empty, will be updated if themes are found
 
-            print("prompt... [Improving characters]")
-            print(prompt)
-            response = send_prompt(prompt, model=self.model)
-            print(response)
-            write_file("characters_enhanced.md", response)
-            # upsert
-            print("Improved Characters")
-            messagebox.showinfo("Success", "Improved characters and saved successfully.")
+            try:
+                if os.path.exists(params_file_path):
+                    params_content = open_file(params_file_path)
+                    current_params = {}
+                    for line in params_content.splitlines():
+                        if ":" in line:
+                            key, value = line.split(":", 1)
+                            current_params[key.strip().lower().replace(' ','_')] = value.strip()
+                    story_genre = current_params.get('genre', story_genre)
+                    story_subgenre = current_params.get('subgenre', story_subgenre)
+                    # Get theme, if it's "Not specified" or empty, story_themes will reflect that or be empty.
+                    story_themes = current_params.get('theme', '').strip()
+                    self.app.logger.info(f"Loaded parameters for title context: Genre='{story_genre}', Subgenre='{story_subgenre}', Theme='{story_themes}'.")
+                else:
+                    self.app.logger.warning(f"Parameters file not found at {params_file_path}. Proceeding without theme/genre context for titles.")
+            except Exception as e_params:
+                self.app.logger.warning(f"Could not parse parameters from {params_file_path} for title context: {e_params}")
 
+            # 3. Construct the prompt for title suggestions
+            # Use full lore content, no truncation
+            lore_for_prompt = lore_content
+
+            prompt_lines = [
+                f"I have the following {story_subgenre} {story_genre} lore. Based on this lore and the listed themes (if any), please suggest 5-10 potential titles for this story.",
+                "Please provide the titles as a simple numbered list, with each title on a new line.\n\n For example:\n",
+                "1. Title One\n",
+                "2. Another Great Title\n",
+                "3. The Final Suggestion\n",
+                "",
+                "## Story Lore:", # Header changed from "Story Lore Excerpt"
+                lore_for_prompt, # Using full lore
+                ""
+            ]
+            # Conditionally add the "Key Themes" section
+            if story_themes and story_themes.lower() != "not specified":
+                prompt_lines.append(f"## Key Themes: {story_themes}")
+                prompt_lines.append("")
+
+            prompt_lines.append("Please provide ONLY the numbered list of titles as your response:")
+            title_prompt_content = "\n".join(prompt_lines)
+
+            # 4. Save the title suggestion prompt
+            title_prompt_base_name = "title_suggestion_prompt"
+            # Pass output_dir directly; save_prompt_to_file will place it in the 'prompts' subfolder by default.
+            title_prompt_filepath = save_prompt_to_file(output_dir, title_prompt_base_name, title_prompt_content)
+
+            if title_prompt_filepath:
+                self.app.logger.info(f"Title suggestion prompt (length {len(title_prompt_content)}) saved to: {title_prompt_filepath}")
+            else:
+                self.app.logger.error(f"Failed to save title suggestion prompt. Length: {len(title_prompt_content)}.")
+                # Fallback logging if needed (similar to other prompt saves)
+                if self.app.logger.isEnabledFor(logging.DEBUG):
+                    self.app.logger.debug(f"Fallback: Full title suggestion prompt:\n{title_prompt_content}")
+                else:
+                    self.app.logger.warning("Title suggestion prompt content not logged. Enable DEBUG for full prompt.")
+
+            # 5. Send to LLM
+            log_msg_prompt_source = f"(from {title_prompt_filepath})" if title_prompt_filepath else "(from memory, save failed)"
+            self.app.logger.info(f"Sending title suggestion prompt {log_msg_prompt_source} to LLM ({selected_model})...")
+            suggested_titles_text = send_prompt(title_prompt_content, model=selected_model)
+
+            if not suggested_titles_text:
+                self.app.logger.error("Failed to get title suggestions from LLM.")
+                messagebox.showerror("Error", "Could not retrieve title suggestions from the LLM.")
+                return
+
+            self.app.logger.info(f"Received title suggestions from LLM. Length: {len(suggested_titles_text)}.")
+
+            # 6. Save suggested titles to a file
+            suggested_titles_filepath = os.path.join(output_dir, "suggested_titles.md")
+            try:
+                write_file(suggested_titles_filepath, suggested_titles_text)
+                self.app.logger.info(f"Suggested titles saved to: {suggested_titles_filepath}")
+                messagebox.showinfo("Success", f"Title suggestions have been saved to:\n{suggested_titles_filepath}\n\nPlease review this file and then update the Novel Title in the Parameters tab.")
+            except IOError as e_write:
+                self.app.logger.error(f"Failed to write suggested titles to {suggested_titles_filepath}: {e_write}", exc_info=True)
+                messagebox.showerror("Error", f"Failed to save suggested titles to file: {e_write}")
+
+        except FileNotFoundError as fnf_e:
+            self.app.logger.error(f"File not found during title suggestion: {fnf_e}", exc_info=True)
+            # Messagebox likely shown by specific file check earlier.
         except Exception as e:
-            print(f"Failed to generate character details: {e}")
+            self.app.logger.error(f"An error occurred during title suggestion: {e}", exc_info=True)
+            messagebox.showerror("Error", f"An unexpected error occurred while suggesting titles: {str(e)}")
 
-
-        # Generate Relationships
-        print("Now: Generating Relationships")
-
-        try:
-            character_data = open_file("characters.md")
-            en_character_data = open_file("characters_enhanced.md")
-
-            prompt = (
-                f"I am writing a sci-fi novel and require some help.\n"
-                f"Here is a short list of characters in the story:\n\n{character_data}\n\n"
-                f"plus some more information about them:\n\n{en_character_data}\n\n"
-                f"Generate a list of relationships between these characters. \n"
-                f"Include each character's name, the character they are related to, and the nature of the relationship (e.g., ally, rival, family)."
-            )
-
-            print("Prompt... [Generating Relationships]")
-            print(prompt)
-            response = send_prompt(prompt, model=self.model)
-            print(response)
-            write_file("relationships.md", response)
-            print("Relationships Generated")
-            messagebox.showinfo("Success", "Relationships generated and saved successfully.")
-
-        except Exception as e:
-            print(f"Failed to generate relationships: {e}")
-            messagebox.showerror("Error", f"Failed to generate relationships: {str(e)}")
 
     # Generate background story for the main characters
     def main_character_enhancement(self):
-        print("Now: Enhance Characters.")
-        lore_data = open_file("generated_lore.md")
-        character_data = open_file("characters.md")
-        en_character_data = open_file("characters_enhanced.md")
+        self.app.logger.info("Main character enhancement process started.")
+        selected_model = self.app.get_selected_model() 
+        output_dir = self.app.get_output_dir()
+        os.makedirs(output_dir, exist_ok=True)
 
-        # Main character
+        self.app.logger.info(f"Using model: {selected_model} for main character enhancement")
+        self.app.logger.info(f"Output directory for character files: {output_dir}")
+
+        # Construct full paths for input files
+        characters_json_path = os.path.join(output_dir, "characters.json")
+        generated_lore_path = os.path.join(output_dir, "generated_lore.md")
+
         try:
+            # Load generated lore
+            try:
+                lore_content = open_file(generated_lore_path)
+                self.app.logger.info(f"Loaded lore content from {generated_lore_path}. Length: {len(lore_content)} chars.")
+            except FileNotFoundError:
+                self.app.logger.warning(f"Lore file {generated_lore_path} not found. Proceeding without lore context for backstories.")
+                lore_content = "No overall lore context available."
+            
+            # Load character data
+            try:
+                all_character_data = read_json(characters_json_path)
+                characters = all_character_data.get("characters", [])
+                if not characters:
+                    self.app.logger.warning(f"No characters found in {characters_json_path}")
+                    characters = []
+                else:
+                    self.app.logger.info(f"Loaded {len(characters)} characters for enhancement from {characters_json_path}")
+                    # self.app.logger.debug(f"Raw characters loaded from JSON: {characters}") # ADDED: Log all loaded characters
+            except FileNotFoundError:
+                self.app.logger.error(f"Character file {characters_json_path} not found. Cannot enhance.", exc_info=True)
+                messagebox.showerror("Error", f"Character file {characters_json_path} not found.")
+                return
+            except (json.JSONDecodeError, ValueError) as e:
+                self.app.logger.error(f"Error decoding JSON from {characters_json_path}: {e}. Cannot enhance.", exc_info=True)
+                messagebox.showerror("Error", f"Error decoding JSON from {characters_json_path}: {e}.")
+                return
 
-            prompt = (
-                f"I am writing a sci-fi novel and require some help to improve the main character.\n"
-                f"I need to have a deeper background story of the main character. Perhaps about their family.\n"
-                f"Something about their upbringing and their life.\n"
-                f"Please use the background information provided to weave a good backstory for the main character.\n"
-                f"Please see the following background information of this story:\n\n{lore_data}\n\n"
-                f"Here is a short list of characters in the story:\n\n{character_data}\n\n"
-                f"And here is a little extra background information\n\n{en_character_data}."
-            )
-            print("prompt... [Enhance Main Characters]")
-            print(prompt)
-            response = send_prompt(prompt, model=self.model)
-            print(response)
-            write_file("main_character_enhanced.md", response)
-            print("Enhanced Main Characters")
+            # Identify and sort main characters (Protagonist, Deuteragonist, Antagonist)
+            main_roles = ["protagonist", "deuteragonist", "antagonist"]
+            main_chars_data = [c for c in characters if c.get("role", "").lower() in main_roles]
+            role_priority = {"protagonist": 0, "deuteragonist": 1, "antagonist": 2}
+            main_chars_data.sort(key=lambda x: role_priority.get(x.get("role", "").lower(), 99))
+
+            if not main_chars_data:
+                self.app.logger.warning("No Protagonist, Deuteragonist, or Antagonist found in characters.json for enhancement.")
+                messagebox.showwarning("Warning", "No Protagonist, Deuteragonist, or Antagonist found in characters.json.")
+                return
+
+            self.app.logger.info(f"Found main characters for enhancement (Count: {len(main_chars_data)}): {[c.get('name', 'NAME N/A') for c in main_chars_data]}")
+            # self.app.logger.debug(f"Full main_chars_data content before loop: {main_chars_data}") # ADDED: Log full list before loop
+
+            # --- Loop through main characters to generate backstories ---
+            generated_backstories = {} # Store generated backstories
+
+            for i, char_data_item in enumerate(main_chars_data): # Changed char_data to char_data_item and used enumerate
+                self.app.logger.info(f"--- Iteration {i} for main character enhancement ---") # ADDED: Iteration log
+                self.app.logger.debug(f"Processing char_data_item (type: {type(char_data_item)}): {char_data_item}") # ADDED: Log current item and its type
+                
+                char_name = char_data_item.get('name', 'Unknown Character') 
+                char_role = char_data_item.get('role', 'Unknown Role')
+                self.app.logger.info(f"Extracted - Name: '{char_name}', Role: '{char_role}'") # ADDED: Log extracted name/role
+
+                self.app.logger.info(f"--- Generating backstory for: {char_name} ({char_role}) ---") # Original log line
+
+                # Build the prompt
+                prompt_lines = [
+                    f"I am writing a sci-fi novel and require help developing the background story for a key character: {char_name}, the {char_role}.",
+                    "Please generate a detailed backstory covering their family, upbringing, significant life events, and how they came to be who they are in the story.",
+                    "Incorporate elements consistent with the overall universe lore and the character's provided details, including their age, gender, and family members."
+                ]
+
+                # Add overall lore
+                prompt_lines.append("\n## Overall Universe Lore:")
+                prompt_lines.append(lore_content)
+
+                # Add current character details
+                prompt_lines.append(f"\n## Details for {char_name} ({char_role}):")
+                
+                # Add basic character information using dict.get()
+                for key in ['age', 'gender', 'title', 'occupation', 'faction', 'faction_role', 
+                          'homeworld', 'home_system', 'goals', 'motivations', 'flaws', 'strengths', 'arc']:
+                    value = char_data_item.get(key)
+                    if value:
+                        if isinstance(value, list):
+                            prompt_lines.append(f"- {key.replace('_', ' ').capitalize()}: {', '.join(value)}")
+                        else:
+                            prompt_lines.append(f"- {key.replace('_', ' ').capitalize()}: {value}")
+
+                # Add formatted family details using dict.get()
+                family_data = char_data_item.get('family', {})
+                if family_data: # Check if family_data itself is not empty
+                    prompt_lines.append("- Family:")
+                    parents = family_data.get('parents', [])
+                    if parents:
+                        parents_str = ", ".join([f"{p.get('name', 'N/A')} ({p.get('relation', 'N/A')}, {p.get('gender', 'N/A')}, {p.get('status', 'N/A')})" 
+                                               for p in parents])
+                        prompt_lines.append(f"  - Parents: {parents_str}")
+                    
+                    siblings = family_data.get('siblings', [])
+                    if siblings:
+                        siblings_str = ", ".join([f"{s.get('name', 'N/A')} ({s.get('relation', 'N/A')}, {s.get('gender', 'N/A')})" 
+                                                for s in siblings])
+                        prompt_lines.append(f"  - Siblings: {siblings_str}")
+
+                    spouse = family_data.get('spouse') # Can be a dict or None
+                    if spouse and isinstance(spouse, dict):
+                        prompt_lines.append(f"  - Spouse: {spouse.get('name', 'N/A')} ({spouse.get('gender', 'N/A')})")
+
+                    children = family_data.get('children', [])
+                    if children:
+                        children_str = ", ".join([f"{c.get('name', 'N/A')} ({c.get('relation', 'N/A')}, {c.get('gender', 'N/A')})" 
+                                                for c in children])
+                        prompt_lines.append(f"  - Children: {children_str}")
+
+                # Add previously generated backstories for context
+                if generated_backstories:
+                    prompt_lines.append("\n## Context from Other Main Character Backstories:")
+                    for name, story in generated_backstories.items():
+                        prompt_lines.append(f"### Backstory for {name}:")
+                        prompt_lines.append(story)
+                        prompt_lines.append("\n---\n")
+                    prompt_lines.append(f"\nPlease ensure the backstory you generate for {char_name} is consistent with or complementary to these existing backstories, creating potential connections or contrasts.")
+
+                # Final instruction
+                prompt_lines.append("\nGenerate the backstory now:")
+                prompt = "\n".join(prompt_lines)
+                # self.app.logger.debug(f"Backstory prompt for {char_name} (length: {len(prompt)} chars):\n{prompt}") # Old direct logging
+
+                # Save the prompt for this character's backstory to a file
+                prompt_base_name = f"background_{char_role.lower().replace(' ', '_').replace('/', '_').replace(':', '_')}_{char_name.lower().replace(' ', '_').replace('/', '_').replace(':', '_')}_prompt"
+                prompt_filepath = save_prompt_to_file(output_dir, prompt_base_name, prompt)
+
+                if prompt_filepath:
+                    self.app.logger.info(f"Backstory prompt for {char_name} (length {len(prompt)}) saved to: {prompt_filepath}")
+                else:
+                    self.app.logger.error(f"Failed to save backstory prompt for {char_name} to a file. Prompt length: {len(prompt)}.")
+                    if self.app.logger.isEnabledFor(logging.DEBUG):
+                        self.app.logger.debug(f"Fallback: Full backstory prompt for {char_name} due to save failure:\n{prompt}")
+                    else:
+                        self.app.logger.warning(f"Backstory prompt content for {char_name} not logged directly due to length and save failure. Enable DEBUG for full prompt.")
+
+                # Send prompt to LLM
+                log_msg_prompt_source = f"(from {prompt_filepath})" if prompt_filepath else "(from memory, save failed)"
+                self.app.logger.info(f"Sending backstory prompt for {char_name} {log_msg_prompt_source} to LLM ({selected_model})...")
+                response = send_prompt(prompt, model=selected_model)
+
+                if not response:
+                    self.app.logger.warning(f"Failed to get backstory from LLM for {char_name}. Skipping.")
+                    continue
+                
+                self.app.logger.info(f"Received backstory for {char_name}. Length: {len(response)} chars.")
+                # Save the generated backstory
+                # Sanitize char_role and char_name for the filename to avoid issues with spaces or special characters
+                safe_char_role = char_role.lower().replace(' ', '_').replace('/', '_').replace(':', '_')
+                safe_char_name = char_name.lower().replace(' ', '_').replace('/', '_').replace(':', '_')
+                base_filename = f"background_{safe_char_role}_{safe_char_name}.md"
+                background_filepath = os.path.join(output_dir, base_filename)
+                write_file(background_filepath, response)
+                self.app.logger.info(f"Saved background for {char_name} to {background_filepath}")
+                
+                # Store for next iteration's context
+                generated_backstories[char_name] = response
+
+            self.app.logger.info("--- Main character enhancement process complete! ---")
+            messagebox.showinfo("Success", "Successfully generated backstories for main characters.")
 
         except Exception as e:
-            print(f"Failed to enhance the main character. Details: {e}")
-
-        # Supporting main character (main character 2)
-        try:
-            prompt = (
-                f"I am writing a sci-fi novel and require some help to improve the 2nd main protagonist.\n"
-                f"I need to have a deeper background story of this supporting character. Perhaps about their family.\n"
-                f"Something about their upbringing and their life.\n"
-                f"Please use the background information provided to weave a good backstory for this character.\n"
-                f"Please see the following background information of this story:\n\n{lore_data}\n\n"
-                f"Here is a short list of characters in the story:\n\n{character_data}\n\n"
-                f"And here is a little extra background information\n\n{en_character_data}."
-            )
-            print("prompt... [Enhance 2nd Main Characters]")
-            print(prompt)
-            response = send_prompt(prompt, model=self.model)
-            print(response)
-            write_file("main_character_2_enhanced.md", response)
-            print("Enhanced 2nd Main Characters")
-
-        except Exception as e:
-            print(f"Failed to enhance the 2nd main character. Details: {e}")
-
-        # Main antagonist
-        try:
-            prompt = (
-                f"I am writing a sci-fi novel and require some help to improve the main antagonist character.\n"
-                f"The character needs a deeper background story. Perhaps about their family. Is there something sinister?\n"
-                f"We need something about their upbringing and their life.\n"
-                f"Please use the background information provided to weave a good backstory for this character.\n"
-                f"Please see the following background information of this story:\n\n{lore_data}\n\n"
-                f"Here is a short list of characters in the story:\n\n{character_data}\n\n"
-                f"And here is a little extra background information\n\n{en_character_data}."
-            )
-            print("prompt... [Enhance Main Antagonist]")
-            print(prompt)
-            response = send_prompt(prompt, model=self.model)
-            print(response)
-            write_file("main_antagonist_enhanced.md", response)
-            print("Enhanced antagonist")
-
-        except Exception as e:
-            print(f"Failed to enhance the antagonist. Details: {e}")
+            self.app.logger.error(f"An error occurred during main character enhancement: {e}", exc_info=True)
+            # import traceback # No longer needed
+            # traceback.print_exc()
+            messagebox.showerror("Error", f"Failed to enhance main characters: {str(e)}")

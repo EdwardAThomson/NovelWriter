@@ -1,0 +1,137 @@
+[
+  {
+    "type": "Militaristic Empire",
+    "primary_traits": ["aggressive", "expansionist", "strict hierarchy"],
+    "descriptors": ["Imperium", "Legion", "Armada"],
+    "titles": ["Emperor", "Supreme Commander", "High Marshal", "Warlord", "Grand Admiral"],
+    "military_titles": ["Legion Commander", "Battle Master", "War General", "Fleet Admiral", "Strike Commander"],
+    "governor_titles": ["Imperial Governor", "Sector Commander", "Provincial Regent", "Planetary Overseer", "Colonial Prefect"],
+    "notes": "Strong emphasis on conquest and domination.",
+    "weight": 12
+  },
+  {
+    "type": "Diplomatic Collective",
+    "primary_traits": ["peaceful", "cooperative", "trade focused"],
+    "descriptors": ["Alliance", "Consortium", "Enclave"],
+    "titles": ["Chancellor", "Assembly Speaker", "High Mediator", "Council President", "Ambassador Prime"],
+    "military_titles": ["Defense Coordinator", "Security Director", "Peacekeeping Commander", "Protection Chief", "Guard Captain"],
+    "governor_titles": ["Regional Representative", "District Administrator", "Sector Coordinator", "Assembly Delegate", "Zone Facilitator"],
+    "notes": "Values mutual benefit, trade agreements, and diplomacy.",
+    "weight": 4
+  },
+  {
+    "type": "Scientific Order",
+    "primary_traits": ["curious", "innovative", "data-driven"],
+    "descriptors": ["Conclave", "Research Consortium", "Institute"],
+    "titles": ["Chief Researcher", "Grand Scientist", "Archive Director", "Research Coordinator", "Lead Theorist"],
+    "military_titles": ["Defense Research Director", "Security Analytics Chief", "Tactical Science Officer", "Field Research Commander", "Experimental Division Head"],
+    "governor_titles": ["Research Division Chief", "Laboratory Administrator", "Field Study Director", "Testing Zone Supervisor", "Research Station Overseer"],
+    "notes": "Prioritizes knowledge and technological advancement.",
+    "weight": 1
+  },
+  {
+    "type": "Spiritual Sect",
+    "primary_traits": ["mystical", "ritualistic", "tradition-bound"],
+    "descriptors": ["Temple", "Covenant", "Sanctum"],
+    "titles": ["High Priest", "Oracle", "Grand Mystic", "Enlightened One", "Sacred Guardian"],
+    "military_titles": ["Crusade Commander", "Holy Warrior Chief", "Sacred Defense Master", "Temple Guardian", "Divine Protector"],
+    "governor_titles": ["Temple Keeper", "Sanctuary Overseer", "District Hierarch", "Sacred Territory Guardian", "Holy Site Custodian"],
+    "notes": "Centered around spiritual practices, often reclusive.",
+    "weight": 1
+  },
+  {
+    "type": "Corporate Conglomerate",
+    "primary_traits": ["profit-driven", "influential", "technologically savvy"],
+    "descriptors": ["Corporation", "Industrial Bloc", "Holdings"],
+    "titles": ["CEO", "Executive Director", "Chairman", "Chief Magnate", "Corporate Overseer"],
+    "military_titles": ["Security Operations Director", "Asset Protection Chief", "Corporate Forces Commander", "Defense Division Head", "Strategic Response Director"],
+    "governor_titles": ["Regional Manager", "District Executive", "Operations Director", "Territory Supervisor", "Branch Administrator"],
+    "notes": "Focuses on expanding markets, controlling resources, and maximizing profit.",
+    "weight": 8
+  },
+  {
+    "type": "Nomadic Raiders",
+    "primary_traits": ["mobile", "opportunistic", "raider culture"],
+    "descriptors": ["Fleet", "Brood", "Horde"],
+    "titles": ["Raid Leader", "Fleet Master", "War Chief", "Nomad King", "Storm Lord"],
+    "military_titles": ["Strike Commander", "Raid Captain", "Battle Chief", "War Pack Leader", "Combat Master"],
+    "governor_titles": ["Camp Leader", "Territory Chief", "Staging Ground Commander", "Base Master", "Outpost Overseer"],
+    "notes": "Constantly on the move; survival depends on quick strikes and resource plundering.",
+    "weight": 5
+  },
+  {
+    "type": "Cybernetic Collective",
+    "primary_traits": ["transhumanist", "hivemind", "machine-augmented"],
+    "descriptors": ["Hive", "Matrix", "Network"],
+    "titles": ["Prime Node", "Consensus Director", "Network Overseer", "Hivemind Coordinator", "Integration Prime"],
+    "military_titles": ["Combat Protocol Director", "Defense Matrix Controller", "War Protocol Node", "Battle Network Coordinator", "Strategic Operations Core"],
+    "governor_titles": ["Sector Node", "District Core", "Regional Process Director", "Zone Control Matrix", "Territory Integration Node"],
+    "notes": "Merged biology and technology, seeking perfection in synthetic synergy.",
+    "weight": 2,
+    "tech_level": 4
+  },
+  {
+    "type": "Genetic Ascendancy",
+    "primary_traits": ["bio-engineered", "hierarchical", "perfectionist"],
+    "descriptors": ["Genome", "Evolutionaries", "Ascendants"],
+    "titles": ["Gene-Lord", "Evolution Director", "Bio-Sovereign", "Master Geneticist", "Adaptation Prime"],
+    "military_titles": ["Bio-War Commander", "Evolution Force Leader", "Adaptation Strategist", "Gene-Army Director", "Bio-Defense Chief"],
+    "governor_titles": ["Gene-Sector Administrator", "Evolution Overseer", "Adaptation Director", "Bio-District Commander", "Gene-Territory Regent"],
+    "notes": "Society focused on genetic perfection and biological advancement.",
+    "weight": 2
+  },
+  {
+    "type": "Trade Federation",
+    "primary_traits": ["mercantile", "diplomatic", "free market"],
+    "descriptors": ["Exchange", "Mercantile League", "Trading Compact"],
+    "titles": ["Grand Merchant", "Trade Sovereign", "Markets Director", "High Lord of Commerce", "Grand Master of Trade"],
+    "military_titles": ["Trade Fleet Admiral", "Security Director", "Commerce Guard Commander", "Defense Chief", "Protection Fleet Master"],
+    "governor_titles": ["Market Administrator", "Trade Zone Director", "Commerce Regent", "Planetary Supervisor", "Trade Port Governor"],
+    "notes": "Focused on establishing and protecting trade routes and market dominance.",
+    "weight": 6
+  },
+  {
+    "type": "Hive Collective",
+    "primary_traits": ["unified consciousness", "biological", "swarm-based"],
+    "descriptors": ["Swarm", "Collective", "Unity"],
+    "titles": ["Hive Queen", "Swarm Director", "Unity Prime", "Collective Mind", "Nexus Controller"],
+    "military_titles": ["Swarm Commander", "War Cluster Leader", "Defense Nexus", "Battle Coordinator", "Strike Swarm Director"],
+    "governor_titles": ["Nest Overseer", "Cluster Administrator", "Hive Controller", "Colony Director", "Brood Supervisor"],
+    "notes": "Operates as a unified consciousness across multiple bodies.",
+    "weight": 2
+  },
+  {
+    "type": "Time Manipulators",
+    "primary_traits": ["chronotech", "mysterious", "advanced"],
+    "descriptors": ["Temporal Authority", "Chronarchy", "Time Collective"],
+    "titles": ["Chrono-Marshal", "Temporal Sovereign", "Time-Weaver Prime", "Epoch Master", "Continuum Director"],
+    "military_titles": ["Temporal Force Commander", "Chrono-War Director", "Time-Strike Leader", "Temporal Defense Chief", "Chronofleet Admiral"],
+    "governor_titles": ["Time-Zone Administrator", "Temporal District Regent", "Chrono-Sector Governor", "Timeline Supervisor", "Epoch Overseer"],
+    "notes": "Masters of temporal technology, manipulating time for their advantage.",
+    "weight": 1,
+    "tech_level": 5
+  },
+  {
+    "type": "Energy Beings",
+    "primary_traits": ["non-corporeal", "energy-based", "transcendent"],
+    "descriptors": ["Luminescence", "Energy Collective", "Radiance"],
+    "titles": ["Light Sovereign", "Energy Prime", "Radiance Director", "Luminous One", "Plasma Archon"],
+    "military_titles": ["Force Commander", "Energy Defense Chief", "Radiant Strike Leader", "Plasma War Director", "Light Fleet Master"],
+    "governor_titles": ["Energy Flow Administrator", "Light Domain Overseer", "Plasma Zone Director", "Radiance Supervisor", "Field Governor"],
+    "notes": "Evolved beyond physical form into beings of pure energy.",
+    "weight": 1,
+    "tech_level": 4
+  },
+  {
+    "type": "Quantum Syndicate",
+    "primary_traits": ["probability manipulation", "quantum-tech", "calculated"],
+    "descriptors": ["Probability Collective", "Quantum Consortium", "Wave Function"],
+    "titles": ["Quantum Director", "Probability Prime", "Wave Function Sovereign", "Uncertainty Master", "Quantum State Controller"],
+    "military_titles": ["Probability War Chief", "Quantum Defense Director", "Wave Combat Commander", "Superposition Fleet Admiral", "Strategic Collapse Leader"],
+    "governor_titles": ["Quantum Zone Administrator", "Probability Sector Regent", "Wave State Governor", "Quantum Domain Overseer", "Probability Field Director"],
+    "notes": "Harness quantum mechanics to manipulate probability itself.",
+    "weight": 1,
+    "tech_level": 4
+  }
+]
+

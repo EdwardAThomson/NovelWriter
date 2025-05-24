@@ -13,6 +13,8 @@ venv/
 # Editor directories and files
 .vscode/
 .idea/
+current_work/
+temp/
 
 # Operating system files
 .DS_Store
