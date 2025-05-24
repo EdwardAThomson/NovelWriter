@@ -18,12 +18,15 @@ While many steps are automated, the output often serves as a strong starting poi
 ## Setup and Installation
 
 1.  **Clone the Repository:**
+    
     ```bash
-    git clone <your-repository-url> # Replace <your-repository-url> with the actual URL
+    git clone https://github.com/EdwardAThomson/NovelWriter.git
     cd NovelWriter
     ```
 
 2.  **Create a Virtual Environment (Recommended):**
+It might easiest to open the files in an IDE and let it handle virtual environments automatically.
+    
     ```bash
     python -m venv venv
     source venv/bin/activate  # On Windows use `venv\Scripts\activate`
@@ -31,6 +34,7 @@ While many steps are automated, the output often serves as a strong starting poi
 
 3.  **Install Dependencies:**
     Make sure you have a `requirements.txt` file listing the necessary packages (like `openai`, `google-generativeai`, `python-dotenv`, `anthropic`, etc.). If not, you'll need to create one.
+    
     ```bash
     pip install -r requirements.txt
     ```
@@ -39,6 +43,7 @@ While many steps are automated, the output often serves as a strong starting poi
 4.  **Configure API Keys:**
     *   Create a file named `.env` in the root directory of the project.
     *   Add your API keys to this file in the following format:
+        
         ```dotenv
         OPENAI_API_KEY='your_openai_api_key_here'
         GEMINI_API_KEY='your_gemini_api_key_here'
@@ -47,6 +52,7 @@ While many steps are automated, the output often serves as a strong starting poi
     *   Replace the placeholder text with your actual keys.
 
 5.  **Run the Application:**
+    
     ```bash
     python main.py
     ```
