@@ -7,8 +7,8 @@ import json
 import os
 import logging
 from helper_fns import open_file, write_file, validate_json_schema, read_json, write_json, validate_json, save_prompt_to_file
-from Generators.SciFiGenerator import generate_universe, print_factions, save_factions_to_file, _generate_base_name, _generate_named_character
-from Generators.CharacterGenerator import generate_main_characters, print_character, save_characters_to_file
+from Generators.GenreHandlers import get_genre_handler
+# Character generation now handled through genre handlers
 import random
 from datetime import datetime
 
@@ -36,14 +36,6 @@ class Lore:
         self.lore_frame = ttk.Frame(parent)
         self.lore_frame.pack(expand=True, fill="both")
 
-        # Logger setup - LoreUI gets app instance, which has logger
-        # So, we can use self.app.logger directly.
-        # For standalone testing or if app is not passed, a fallback can be used:
-        # self.logger = app.logger if app and hasattr(app, 'logger') else logging.getLogger(__name__)
-        # if not (app and hasattr(app, 'logger')):
-        #     logging.basicConfig(level=logging.INFO)
-        #     self.logger.info("LoreUI initialized without main app logger. Using default logger for this module.")
-
         # Title Label
         self.title_label = ttk.Label(self.lore_frame, text="Lore Builder", font=("Helvetica", 16))
         self.title_label.pack(pady=10)
@@ -55,7 +47,8 @@ class Lore:
         # Number of Factions input
         self.faction_frame = ttk.Frame(self.param_frame)
         self.faction_frame.pack(fill="x", padx=5, pady=5)
-        ttk.Label(self.faction_frame, text="Number of Factions (Max 10):").pack(side="left", padx=5)
+        self.faction_label = ttk.Label(self.faction_frame, text="Number of Factions (Max 10):")
+        self.faction_label.pack(side="left", padx=5)
         self.num_factions_var = tk.StringVar(value="3")
         self.num_factions_entry = ttk.Entry(self.faction_frame, textvariable=self.num_factions_var, width=5)
         self.num_factions_entry.pack(side="left")
@@ -68,13 +61,6 @@ class Lore:
         self.num_chars_entry = ttk.Entry(self.char_frame, textvariable=self.num_chars_var, width=5)
         self.num_chars_entry.pack(side="left")
 
-        # Number of Planets input - create frame but don't pack it yet
-        # self.planet_frame = ttk.Frame(self.param_frame)
-        # ttk.Label(self.planet_frame, text="Number of Planets:").pack(side="left", padx=5)
-        # self.num_planets_var = tk.StringVar(value="5")
-        # self.num_planets_entry = ttk.Entry(self.planet_frame, textvariable=self.num_planets_var, width=5)
-        # self.num_planets_entry.pack(side="left")
-
         # Additional parameter frame
         self.extra_param_frame = ttk.Frame(self.param_frame)
         self.extra_param_label = ttk.Label(self.extra_param_frame, text="")
@@ -83,44 +69,29 @@ class Lore:
         self.extra_param_entry = ttk.Entry(self.extra_param_frame, textvariable=self.extra_param_var, width=15)
         self.extra_param_entry.pack(side="left")
 
-        # Call update_extra_parameter after all frames are created
-        # self.update_extra_parameter() # REMOVED: This call was premature, before self.planet_button is created.
-
         # Buttons
-        # Generate Factions Button (moved up)
+        # Generate Factions Button
         self.factions_button = ttk.Button(self.lore_frame, text="Generate Factions", command=self.generate_factions)
         self.factions_button.pack(pady=20)
 
-        # Generate and Improve Characters Buttons (moved up)
+        # Generate Characters Button
         self.characters_button = ttk.Button(self.lore_frame, text="Generate Characters", command=self.generate_characters)
         self.characters_button.pack(pady=20)
-
-        # Generate Planet List Button (moved up) - don't pack yet
-        self.planet_button = ttk.Button(self.lore_frame, text="Generate Planet List", command=self.generate_planet_list)
-        # Don't pack here - let update_extra_parameter handle it
 
         # Generate Lore Button
         self.generate_lore_button = ttk.Button(self.lore_frame, text="Generate Lore", command=self.generate_lore)
         self.generate_lore_button.pack(pady=20)
 
-        # Generate Tech Button
-        # self.tech_button = ttk.Button(self.lore_frame, text="Generate Tech Lore", command=self.generate_tech_lore)
-        # self.tech_button.pack(pady=20)
-
-        # Improve Characters Button
-        # self.improve_characters_button = ttk.Button(self.lore_frame, text="Improve Characters and Relationships", command=self.improve_characters)
-        # self.improve_characters_button.pack(pady=20)
-
         # Enhance Main Characters Button
         self.main_char_enh_button = ttk.Button(self.lore_frame, text="Enhance main characters", command=self.main_character_enhancement)
         self.main_char_enh_button.pack(pady=20)
 
-        # Suggest Titles Button (New)
+        # Suggest Titles Button
         self.suggest_titles_button = ttk.Button(self.lore_frame, text="Suggest Story Titles", command=self.suggest_titles)
-        self.suggest_titles_button.pack(pady=20) # Placed after main_char_enh_button for now
+        self.suggest_titles_button.pack(pady=20)
 
         # Call update_extra_parameter after all UI elements are created
-        self.update_extra_parameter()  # This will handle initial visibility of planet button and frame
+        self.update_extra_parameter()
 
     def update_genre_display(self):
         """Update the genre/subgenre display label"""
@@ -138,22 +109,48 @@ class Lore:
         """Update UI based on selected subgenre"""
         self.update_genre_display()
         try:
-            subgenre = self.app.param_ui.subgenre_var.get()
+            # Update faction label based on genre
+            genre = self.app.param_ui.genre_var.get()
+            try:
+                genre_handler = get_genre_handler(genre)
+                if genre_handler.uses_factions():
+                    organization_type = genre_handler.get_organization_type()
+                    if organization_type == "factions":
+                        self.faction_label.config(text="Number of Factions (Max 10):")
+                        self.factions_button.config(text="Generate Factions")
+                    elif organization_type == "agencies":
+                        self.faction_label.config(text="Number of Agencies (Max 10):")
+                        self.factions_button.config(text="Generate Agencies")
+                    elif organization_type == "social circles":
+                        self.faction_label.config(text="Number of Social Groups (Max 10):")
+                        self.factions_button.config(text="Generate Social Groups")
+                    elif organization_type == "cults":
+                        self.faction_label.config(text="Number of Cults/Groups (Max 10):")
+                        self.factions_button.config(text="Generate Cults/Groups")
+                    else:
+                        self.faction_label.config(text=f"Number of {organization_type.title()} (Max 10):")
+                        self.factions_button.config(text=f"Generate {organization_type.title()}")
+                else:
+                    # Hide faction generation for genres that don't use them
+                    self.faction_frame.pack_forget()
+                    self.factions_button.pack_forget()
+                    return
+            except ValueError:
+                # Default to factions if genre handler not found
+                self.faction_label.config(text="Number of Factions (Max 10):")
+                self.factions_button.config(text="Generate Factions")
             
-            # Handle planet input and button visibility - hide both for Space Opera
-            # if subgenre == "Space Opera":
-            #     if self.planet_frame.winfo_manager():  # If currently visible
-            #         self.planet_frame.pack_forget()
-            #     if self.planet_button.winfo_manager():  # If button visible
-            #         self.planet_button.pack_forget()
-            # else:
-            #     if not self.planet_frame.winfo_manager():  # If currently hidden
-            #         self.planet_frame.pack(fill="x", padx=5, pady=5, after=self.char_frame)
-            #     if not self.planet_button.winfo_manager():  # If button hidden
-            #         self.planet_button.pack(pady=20, after=self.characters_button)
+            # Ensure faction frame and button are visible for genres that use them
+            if not self.faction_frame.winfo_manager():
+                self.faction_frame.pack(fill="x", padx=5, pady=5, after=self.genre_label)
+            if not self.factions_button.winfo_manager():
+                self.factions_button.pack(pady=20, before=self.characters_button)
+            
+            subgenre = self.app.param_ui.subgenre_var.get()
             
             # Handle other extra parameters
             extra_params = {
+                # Sci-Fi subgenres
                 "Cyberpunk": "Technological Focus:",
                 "Military Sci-Fi": "Conflict Scale:",
                 "Post-Apocalyptic": "Disaster Type:",
@@ -161,9 +158,16 @@ class Lore:
                 "Time Travel": "Time Period Range:",
                 "Alternate History": "Divergence Point:",
                 "Dystopian": "Social Issue Focus:",
+                # Fantasy subgenres
+                "High Fantasy": "Magic System Focus:",
+                "Dark Fantasy": "Horror Elements:",
+                "Urban Fantasy": "Modern Setting:",
+                "Sword and Sorcery": "Adventure Focus:",
+                "Mythic Fantasy": "Mythological Focus:",
+                "Fairy Tale": "Moral Theme:",
             }
 
-            if subgenre != "Space Opera" and subgenre in extra_params:
+            if subgenre in extra_params:
                 self.extra_param_label.config(text=extra_params[subgenre])
                 self.extra_param_frame.pack(fill="x", padx=5, pady=5)
             else:
@@ -173,13 +177,6 @@ class Lore:
             self.app.logger.error(f"Failed to update extra parameter: {e}", exc_info=True)
 
 # Generation functions
-
-    # Placeholder for generate_planet_list method
-    # TODO: Will possibly remove this
-    def generate_planet_list(self):
-        self.app.logger.info("Lore.generate_planet_list called, but it is not yet implemented.")
-        messagebox.showinfo("Not Implemented", "The 'Generate Planet List' feature is not yet implemented.")
-        pass
 
     # Generate list of factions and some of their details
     def generate_factions(self):
@@ -191,14 +188,28 @@ class Lore:
             params = self.app.param_ui.get_current_parameters()
             female_percentage = params.get("female_percentage", 50) # Default to 50 if not found
             male_percentage = params.get("male_percentage", 50)   # Default to 50 if not found
+            genre = params.get("genre", "Sci-Fi")  # Get current genre
+            subgenre = params.get("subgenre", "")  # Get current subgenre
             
-            self.app.logger.info(f"Generating factions (using gender bias: Female {female_percentage}%, Male {male_percentage}%)")
+            self.app.logger.info(f"Generating {genre} factions (using gender bias: Female {female_percentage}%, Male {male_percentage}%)")
             
-            # Call generate_universe with the number of factions and the numerical gender bias percentages
-            factions = generate_universe(num_factions=num_factions, female_percentage=female_percentage, male_percentage=male_percentage)
+            # Get the appropriate genre handler
+            try:
+                genre_handler = get_genre_handler(genre)
+            except ValueError as e:
+                self.app.logger.error(f"Unsupported genre: {genre}. Error: {e}")
+                messagebox.showerror("Error", f"Unsupported genre: {genre}")
+                return
+            
+            # Generate factions using the genre handler
+            factions = genre_handler.generate_factions(
+                num_factions=num_factions,
+                female_percentage=female_percentage,
+                male_percentage=male_percentage,
+                subgenre=subgenre
+            )
             
             # Print factions to console for debugging
-            # print_factions(factions=factions) # Replaced by logger below
             if factions:
                 self.app.logger.info(f"Generated {len(factions)} factions. First faction example: {factions[0].get('faction_name', 'N/A')}")
                 for i, faction_data in enumerate(factions):
@@ -216,11 +227,11 @@ class Lore:
             # Construct the full filepath for factions.json
             factions_filepath = os.path.join(output_dir, "factions.json")
             
-            # Save factions to file
-            save_factions_to_file(factions=factions, filename=factions_filepath) # Pass full path
+            # Save factions to file using the genre handler
+            genre_handler.save_factions(factions, factions_filepath)
 
-            self.app.logger.info(f"Generated factions and saved to {factions_filepath}")
-            messagebox.showinfo("Success", "Generated factions and saved successfully.")
+            self.app.logger.info(f"Generated {genre} factions and saved to {factions_filepath}")
+            messagebox.showinfo("Success", f"Generated {genre} factions and saved successfully.")
 
         except AttributeError as ae:
             # This might happen if parameters_ui or gender_bias_var is not found
@@ -230,7 +241,6 @@ class Lore:
             self.app.logger.error(f"Failed to generate faction details: {e}", exc_info=True)
             messagebox.showerror("Error", f"Failed to generate faction details: {str(e)}")
 
-
     # Generate a list of characters
     # Then match characters to the list of factions
     # Also generates relationships between characters?
@@ -239,20 +249,36 @@ class Lore:
             num_chars = int(self.num_chars_var.get())
             self.app.logger.info(f"Attempting to generate {num_chars} characters.")
             
-            # Get the selected gender bias percentages from ParametersUI
+            # Get the selected gender bias percentages and genre from Parameters.py
             params = self.app.param_ui.get_current_parameters()
             female_percentage = params.get("female_percentage", 50)
             male_percentage = params.get("male_percentage", 50)
+            genre = params.get("genre", "Sci-Fi")
             
             self.app.logger.info(f"Using gender bias for character generation: Female {female_percentage}%, Male {male_percentage}%")
+            self.app.logger.info(f"Generating characters for genre: {genre}")
             
-            # Generate characters using the CharacterGenerator
-            characters = generate_main_characters(num_characters=num_chars, female_percentage=female_percentage, male_percentage=male_percentage)
+            # Generate characters using the genre handler system
+            try:
+                genre_handler = get_genre_handler(genre)
+                characters = genre_handler.generate_characters(
+                    num_characters=num_chars,
+                    female_percentage=female_percentage,
+                    male_percentage=male_percentage,
+                    include_races=True  # This will be ignored by sci-fi handler, used by fantasy handler
+                )
+            except ValueError as e:
+                self.app.logger.error(f"Unsupported genre for character generation: {genre}. Error: {e}")
+                messagebox.showerror("Error", f"Unsupported genre for character generation: {genre}")
+                return
             
             if not characters:
                 self.app.logger.error("Failed to generate characters. generate_main_characters returned empty.")
                 messagebox.showerror("Error", "Failed to generate characters.")
                 return
+            
+            # Note: Characters are now generated with genre-appropriate attributes from the start
+            # No post-processing needed as each generator handles its own genre-specific attributes
             
             # Print to console for debugging
             # for char in characters:
@@ -289,8 +315,8 @@ class Lore:
             os.makedirs(output_dir, exist_ok=True)
             characters_filepath = os.path.join(output_dir, "characters.json")
             
-            # Save using the CharacterGenerator's save function
-            save_characters_to_file(characters, filename=characters_filepath)
+            # Save using the genre handler's save function
+            genre_handler.save_characters(characters, filename=characters_filepath)
             
             self.app.logger.info(f"Generated main characters and saved to {characters_filepath}")
             messagebox.showinfo("Success", "Generated characters and saved successfully.")
@@ -299,6 +325,129 @@ class Lore:
             self.app.logger.error(f"Failed to generate character details: {e}", exc_info=True)
             messagebox.showerror("Error", f"Failed to generate character details: {str(e)}")
 
+    def _add_genre_specific_attributes(self, characters, genre_handler):
+        """Add genre-specific attributes to characters based on the genre handler."""
+        try:
+            genre_name = genre_handler.get_genre_name()
+            
+            # Check if this genre uses factions/organizations
+            if not genre_handler.uses_factions():
+                self.app.logger.info(f"{genre_name} doesn't use traditional factions - skipping faction assignment")
+                return
+            
+            # Load faction data to assign characters to factions/organizations
+            output_dir = self.app.get_output_dir()
+            factions_filepath = os.path.join(output_dir, "factions.json")
+            
+            factions_data = None
+            try:
+                factions_data = read_json(factions_filepath)
+                organization_type = genre_handler.get_organization_type()
+                self.app.logger.info(f"Loaded {len(factions_data)} {organization_type} for character assignment")
+            except FileNotFoundError:
+                self.app.logger.warning(f"No {genre_handler.get_organization_type()} file found - characters will be generated without organizational affiliations")
+                return
+            except Exception as e:
+                self.app.logger.warning(f"Error loading {genre_handler.get_organization_type()} for character assignment: {e}")
+                return
+            
+            if not factions_data:
+                return
+            
+            if genre_name == "Sci-Fi":
+                self._assign_scifi_attributes(characters, factions_data)
+            elif genre_name == "Fantasy":
+                self._assign_fantasy_attributes(characters, factions_data)
+            else:
+                # For other genres that use factions, assign basic faction affiliation
+                self._assign_basic_faction_attributes(characters, factions_data, genre_handler)
+                
+        except Exception as e:
+            self.app.logger.error(f"Error adding genre-specific attributes: {e}", exc_info=True)
+    
+    def _assign_scifi_attributes(self, characters, factions_data):
+        """Assign sci-fi specific attributes like homeworld and home_system."""
+        # Get list of all habitable planets
+        habitable_planets = []
+        for faction in factions_data:
+            for system in faction.get("systems", []):
+                for planet in system.get("habitable_planets", []):
+                    habitable_planets.append({
+                        "name": planet.get("name", "Unknown"),
+                        "system": system.get("name", "Unknown"),
+                        "faction": faction.get("faction_name", "Unknown")
+                    })
+        
+        if not habitable_planets:
+            self.app.logger.warning("No habitable planets found in factions data")
+            return
+            
+        # Assign homeworld and faction to each character
+        for char in characters:
+            homeworld = random.choice(habitable_planets)
+            char.homeworld = homeworld["name"]
+            char.home_system = homeworld["system"]
+            char.faction = homeworld["faction"]
+            
+    def _assign_fantasy_attributes(self, characters, factions_data):
+        """Assign fantasy specific attributes like homeland, home_region, and race."""
+        # Get list of all cities and their regions
+        cities_and_regions = []
+        for faction in factions_data:
+            faction_race = faction.get("race", "Human")  # Get faction's race
+            for region in faction.get("regions", []):
+                for city in region.get("cities", []):
+                    cities_and_regions.append({
+                        "name": city.get("name", "Unknown"),
+                        "region": region.get("name", "Unknown"),
+                        "faction": faction.get("faction_name", "Unknown"),
+                        "race": faction_race
+                    })
+        
+        if not cities_and_regions:
+            self.app.logger.warning("No cities found in factions data")
+            return
+            
+        # Assign homeland, region, race, and faction to each character
+        for char in characters:
+            homeland_info = random.choice(cities_and_regions)
+            char.homeland = homeland_info["name"]
+            char.home_region = homeland_info["region"]
+            char.race = homeland_info["race"]
+            char.faction = homeland_info["faction"]
+            
+            # Add fantasy-specific attributes if they don't exist
+            if not hasattr(char, 'homeland'):
+                char.homeland = None
+            if not hasattr(char, 'home_region'):
+                char.home_region = None
+            if not hasattr(char, 'race'):
+                char.race = None
+    
+    def _assign_basic_faction_attributes(self, characters, factions_data, genre_handler):
+        """Assign basic faction/organization affiliation for genres that use them."""
+        organization_type = genre_handler.get_organization_type()
+        
+        # Extract organization names from the factions data
+        organizations = []
+        for faction in factions_data:
+            organizations.append({
+                "name": faction.get("name", "Unknown Organization"),
+                "type": faction.get("type", "Unknown Type")
+            })
+        
+        if not organizations:
+            self.app.logger.warning(f"No {organization_type} found in data")
+            return
+            
+        # Assign organization affiliation to each character
+        for char in characters:
+            org_info = random.choice(organizations)
+            char.faction = org_info["name"]
+            
+            # Add organization type as an attribute for some genres
+            if hasattr(char, 'organization_type') or organization_type in ['agencies', 'cults']:
+                char.organization_type = org_info["type"]
 
 
    ### Generation Functions -- leveraging LLMs for content generation
@@ -354,12 +503,22 @@ class Lore:
 
             factions = []
             try:
-                factions_data = read_json(factions_json_path) # factions_data is a list of faction dicts
-                if factions_data: # Check if factions_data is not None and not empty
-                    factions = factions_data
+                factions_data = read_json(factions_json_path)
+                if factions_data:
+                    # Handle both direct list format and wrapped format
+                    if isinstance(factions_data, list):
+                        # Direct list format (used by some genres)
+                        factions = factions_data
+                    elif isinstance(factions_data, dict) and "factions" in factions_data:
+                        # Wrapped format (used by Horror and potentially other genres)
+                        factions = factions_data["factions"]
+                    else:
+                        # Fallback: try to use the data as-is if it's a dict with faction-like structure
+                        factions = factions_data if isinstance(factions_data, list) else []
+                    
                     self.app.logger.info(f"Loaded {len(factions)} factions from {factions_json_path}")
                 else:
-                    self.app.logger.warning(f"No factions found or empty list in {factions_json_path}")
+                    self.app.logger.warning(f"No factions found or empty data in {factions_json_path}")
             except FileNotFoundError:
                 self.app.logger.warning(f"Faction file not found: {factions_json_path}")
             except (json.JSONDecodeError, ValueError) as e:
@@ -369,7 +528,7 @@ class Lore:
             self.app.logger.info("Constructing base lore prompt...")
             prompt_lines = [
                 "You are an AI assistant helping to generate the foundational lore for a new story.",
-                "Based on the provided parameters, character summaries, and faction summaries, please generate a rich and detailed background for the story's universe. This should include:",
+                "Based on the provided parameters, character summaries, and faction summaries, please generate a rich and detailed background for the story's universe.", # This should include:
                 # "- Key historical events.",
                 # "- Cultural details.",
                 # "- Technological level and unique aspects.",
@@ -409,22 +568,22 @@ class Lore:
             # --- Step 2: Enhance the prompt with detailed character and faction information ---
             self.app.logger.info("Enhancing prompt with faction capitals and detailed character info...")
             if factions:
-                # Add faction capitals section
-                faction_section = "\n## Faction Capitals:\n"
-                for faction in factions:
-                    faction_name = faction.get("faction_name", "Unknown Faction")
-                    # Find the capital system and planet
-                    capital_system = next((sys for sys in faction.get("systems", []) if sys.get("is_capital_system", False)), None)
-                    if capital_system:
-                        capital_planet = next((planet for planet in capital_system.get("habitable_planets", []) 
-                                            if planet.get("is_capital", False)), None)
-                        if capital_planet:
-                            faction_section += f"- {faction_name}: {capital_planet.get('name', 'N/A')} in {capital_system.get('name', 'N/A')}\n"
-                            stats = capital_planet.get("stats", {})
-                            faction_section += f"  - Population: {stats.get('population', 'Unknown')}\n"
-                            faction_section += f"  - Climate: {stats.get('climate', 'Unknown')}\n"
-                            faction_section += f"  - Infrastructure: {stats.get('infrastructure', {}).get('description', 'Unknown')}\n"
-                prompt += faction_section
+                # Get current genre and appropriate handler
+                params = self.app.param_ui.get_current_parameters()
+                current_genre = params.get("genre", "Sci-Fi")
+                
+                try:
+                    genre_handler = get_genre_handler(current_genre)
+                    faction_section = genre_handler.get_faction_capitals_info(factions)
+                    prompt += faction_section
+                except ValueError as e:
+                    self.app.logger.warning(f"Could not get genre handler for {current_genre}: {e}. Skipping faction capitals.")
+                    # Fallback: add basic faction names only
+                    faction_section = "\n## Faction Names:\n"
+                    for faction in factions:
+                        faction_name = faction.get("faction_name", "Unknown Faction")
+                        faction_section += f"- {faction_name}\n"
+                    prompt += faction_section
 
             if characters:
                 # Add a detailed character section to the prompt
@@ -442,21 +601,25 @@ class Lore:
                     
                     # Add basic information
                     basic_info = []
-                    for key in ['gender', 'age', 'title', 'occupation', 'faction', 'faction_role', 
-                              'homeworld', 'home_system']:
-                        value = char_dict.get(key)
-                        if value:
-                            basic_info.append(f"- {key.replace('_', ' ').capitalize()}: {value}")
+                    # Get character attributes from genre handler
+                    try:
+                        genre_handler = get_genre_handler(current_genre)
+                        basic_keys = genre_handler.get_character_attributes()
+                    except ValueError:
+                        # Fallback to basic attributes if genre handler not found
+                        basic_keys = ['gender', 'age', 'title', 'occupation', 'faction', 'faction_role', 
+                                    'goals', 'motivations', 'flaws', 'strengths', 'arc']
                     
-                    # Add character traits
-                    traits = []
-                    for key in ['goals', 'motivations', 'flaws', 'strengths', 'arc']:
+                    for key in basic_keys:
                         value = char_dict.get(key)
                         if value:
                             if isinstance(value, list):
-                                traits.append(f"- {key.replace('_', ' ').capitalize()}: {', '.join(value)}")
+                                basic_info.append(f"- {key.replace('_', ' ').capitalize()}: {', '.join(value)}")
                             else:
-                                traits.append(f"- {key.replace('_', ' ').capitalize()}: {value}")
+                                basic_info.append(f"- {key.replace('_', ' ').capitalize()}: {value}")
+                    
+                    # Add character traits (this section is now redundant since basic_keys already includes these)
+                    traits = []
                     
                     family_data = char_dict.get('family', {})
                     if family_data:
@@ -709,9 +872,15 @@ class Lore:
 
                 self.app.logger.info(f"--- Generating backstory for: {char_name} ({char_role}) ---") # Original log line
 
+                # Get current genre for appropriate prompt
+                params = self.app.param_ui.get_current_parameters()
+                current_genre = params.get("genre", "Sci-Fi")
+                current_subgenre = params.get("subgenre", "")
+                
                 # Build the prompt
+                genre_text = f"{current_subgenre} {current_genre}" if current_subgenre else current_genre
                 prompt_lines = [
-                    f"I am writing a sci-fi novel and require help developing the background story for a key character: {char_name}, the {char_role}.",
+                    f"I am writing a {genre_text.lower()} novel and require help developing the background story for a key character: {char_name}, the {char_role}.",
                     "Please generate a detailed backstory covering their family, upbringing, significant life events, and how they came to be who they are in the story.",
                     "Incorporate elements consistent with the overall universe lore and the character's provided details, including their age, gender, and family members."
                 ]
@@ -724,8 +893,16 @@ class Lore:
                 prompt_lines.append(f"\n## Details for {char_name} ({char_role}):")
                 
                 # Add basic character information using dict.get()
-                for key in ['age', 'gender', 'title', 'occupation', 'faction', 'faction_role', 
-                          'homeworld', 'home_system', 'goals', 'motivations', 'flaws', 'strengths', 'arc']:
+                # Get character attributes from genre handler
+                try:
+                    genre_handler = get_genre_handler(current_genre)
+                    character_keys = genre_handler.get_character_attributes()
+                except ValueError:
+                    # Fallback to basic attributes if genre handler not found
+                    character_keys = ['age', 'gender', 'title', 'occupation', 'faction', 'faction_role', 
+                                    'goals', 'motivations', 'flaws', 'strengths', 'arc']
+                
+                for key in character_keys:
                     value = char_data_item.get(key)
                     if value:
                         if isinstance(value, list):

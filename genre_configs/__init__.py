@@ -24,15 +24,33 @@ def get_genre_config(genre: str, subgenre: str) -> dict:
         dict: Combined built-in and user configurations
     """
     # Convert genre name to module name format (e.g., "Sci-Fi" -> "scifi")
-    module_name = genre.lower().replace("-", "").replace(" ", "").replace("fi", "fi")  # Fix case for "Sci-Fi"
+    module_name = genre.lower().replace("-", "").replace(" ", "")
+    
+    # Special mappings for genres with different module names
+    module_name_map = {
+        "historicalfiction": "historical"
+    }
+    module_name = module_name_map.get(module_name, module_name)
     
     # Get built-in configs
     built_in_configs = {}
     try:
         module = importlib.import_module(f"genre_configs.{module_name}")
-        configs_class_name = f"{module_name.capitalize()}Configs"
-        if module_name == "scifi":
-            configs_class_name = "SciFiConfigs"  # Special case for SciFi
+        
+        # Map genre names to their config class names
+        class_name_map = {
+            "scifi": "SciFiConfigs",
+            "fantasy": "FantasyConfigs", 
+            "western": "WesternConfigs",
+            "mystery": "MysteryConfigs",
+            "romance": "RomanceConfigs",
+            "horror": "HorrorConfigs",
+            "thriller": "ThrillerConfigs",
+            "historical": "HistoricalConfigs",
+            "historicalfiction": "HistoricalConfigs"
+        }
+        
+        configs_class_name = class_name_map.get(module_name, f"{module_name.capitalize()}Configs")
         built_in_configs = getattr(module, configs_class_name).CONFIGS
     except (ImportError, AttributeError) as e:
         print(f"Warning: No built-in configuration found for genre: {genre} ({str(e)})")

@@ -1,0 +1,116 @@
+[
+  {
+    "type": "Kingdom",
+    "descriptors": ["Kingdom", "Realm", "Empire", "Dominion", "Crown Lands"],
+    "primary_traits": ["Hierarchical", "Traditional", "Militaristic"],
+    "notes": "Large traditional monarchies with clear social hierarchies and strong military traditions.",
+    "weight": 60,
+    "magic_level": 2,
+    "titles": ["King", "Queen", "High Lord", "Sovereign", "Emperor", "Empress"],
+    "military_titles": ["General", "Marshal", "Knight-Commander", "Lord Commander", "Champion"],
+    "governor_titles": ["Baron", "Baroness", "Count", "Countess", "Lord Mayor", "Sheriff"]
+  },
+  {
+    "type": "City-State",
+    "descriptors": ["City-State", "Free City", "Independent City", "Autonomous City", "City Republic"],
+    "primary_traits": ["Mercantile", "Independent", "Wealthy"],
+    "notes": "Single independent cities with immediate surroundings, focused on trade and self-governance.",
+    "weight": 15,
+    "magic_level": 2,
+    "max_regions": 1,
+    "max_cities_per_region": 1,
+    "titles": ["Lord Mayor", "City Prince", "Merchant Lord", "City Sovereign", "Doge"],
+    "military_titles": ["Captain-General", "Guard Commander", "Militia Leader", "Defense Chief"],
+    "governor_titles": ["District Governor", "Ward Master", "Trade Overseer", "Port Master"]
+  },
+  {
+    "type": "Independent State",
+    "descriptors": ["Principality", "Duchy", "Free State", "Independent Realm", "Sovereign Territory"],
+    "primary_traits": ["Independent", "Diplomatic", "Resilient"],
+    "notes": "Small independent countries, similar to historical duchies and principalities, controlling a few cities.",
+    "weight": 36,
+    "magic_level": 2,
+    "max_regions": 2,
+    "max_cities_per_region": 3,
+    "titles": ["Duke", "Duchess", "Prince", "Princess", "Grand Duke", "Sovereign"],
+    "military_titles": ["Marshal", "General", "Knight-Commander", "Captain-General"],
+    "governor_titles": ["Baron", "Baroness", "Count", "Countess", "Governor", "Magistrate"]
+  },
+  {
+    "type": "Religious Order",
+    "descriptors": ["Holy Order", "Sacred Brotherhood", "Divine Temple", "Faithful", "Blessed Congregation"],
+    "primary_traits": ["Devout", "Organized", "Missionary"],
+    "notes": "Religious organizations dedicated to spreading their faith and serving their deity.",
+    "weight": 10,
+    "magic_level": 3,
+    "titles": ["High Priest", "High Priestess", "Archbishop", "Divine Oracle", "Sacred Leader"],
+    "military_titles": ["Paladin Commander", "Temple Guardian", "Holy Warrior", "Divine Champion"],
+    "governor_titles": ["Bishop", "Abbot", "Abbess", "Temple Master", "Sacred Keeper"]
+  },
+  {
+    "type": "Magical Academy",
+    "descriptors": ["Academy", "Circle", "Conclave", "Arcane Order", "School of Magic"],
+    "primary_traits": ["Scholarly", "Magical", "Secretive"],
+    "notes": "Organizations of mages and scholars dedicated to the study and advancement of magic.",
+    "weight": 12,
+    "magic_level": 4,
+    "titles": ["Archmage", "High Mage", "Master of Magic", "Grand Wizard", "Keeper of Mysteries"],
+    "military_titles": ["Battle Mage", "War Wizard", "Arcane Guardian", "Spell Sword"],
+    "governor_titles": ["Tower Master", "Circle Leader", "Academy Dean", "Magical Overseer"]
+  },
+  {
+    "type": "Guild Alliance",
+    "descriptors": ["Guild", "Alliance", "Brotherhood", "Consortium", "Trade Union"],
+    "primary_traits": ["Craftsmanship", "Economic", "Organized"],
+    "notes": "Powerful guilds that have banded together for mutual protection and profit.",
+    "weight": 15,
+    "magic_level": 1,
+    "titles": ["Guild Master", "Trade Lord", "Craft Sovereign", "Master Artisan", "Alliance Leader"],
+    "military_titles": ["Guild Enforcer", "Trade Guard", "Craft Defender", "Alliance Protector"],
+    "governor_titles": ["Workshop Master", "Trade Overseer", "Craft Governor", "Guild Representative"]
+  },
+  {
+    "type": "Nomadic Tribe",
+    "descriptors": ["Tribe", "Clan", "Horde", "Wanderers", "Riders"],
+    "primary_traits": ["Mobile", "Warrior Culture", "Traditional"],
+    "notes": "Nomadic peoples who roam the lands, following ancient traditions and warrior codes.",
+    "weight": 10,
+    "magic_level": 1,
+    "titles": ["Chieftain", "War Chief", "Clan Leader", "Tribal Elder", "Khan"],
+    "military_titles": ["War Leader", "Battle Chief", "Raid Captain", "Warrior Master"],
+    "governor_titles": ["Camp Leader", "Settlement Chief", "Outpost Master", "Tribal Governor"]
+  },
+  {
+    "type": "Dark Cult",
+    "descriptors": ["Cult", "Shadow Order", "Dark Brotherhood", "Forbidden Circle", "Cursed Covenant"],
+    "primary_traits": ["Secretive", "Dark Magic", "Ambitious"],
+    "notes": "Secretive organizations that practice forbidden magic and seek power through dark means.",
+    "weight": 5,
+    "magic_level": 3,
+    "titles": ["Dark Lord", "Shadow Master", "Cult Leader", "High Cultist", "Master of Shadows"],
+    "military_titles": ["Death Knight", "Shadow Warrior", "Dark Champion", "Cursed General"],
+    "governor_titles": ["Shadow Governor", "Dark Overseer", "Cult Master", "Forbidden Keeper"]
+  },
+  {
+    "type": "Druid Circle",
+    "descriptors": ["Circle", "Grove", "Natural Order", "Wild Guardians", "Earth Keepers"],
+    "primary_traits": ["Nature-focused", "Protective", "Mystical"],
+    "notes": "Guardians of nature who protect the wild places and maintain the balance of the natural world.",
+    "weight": 8,
+    "magic_level": 3,
+    "titles": ["Archdruid", "Grove Master", "Nature's Voice", "Wild Keeper", "Earth Speaker"],
+    "military_titles": ["Grove Guardian", "Wild Defender", "Nature's Wrath", "Beast Master"],
+    "governor_titles": ["Forest Warden", "Grove Keeper", "Wild Overseer", "Nature's Guardian"]
+  },
+  {
+    "type": "Mercenary Company",
+    "descriptors": ["Company", "Band", "Legion", "Free Company", "Sellswords"],
+    "primary_traits": ["Professional", "Mercenary", "Disciplined"],
+    "notes": "Professional soldiers who fight for coin, often becoming powerful enough to control territory.",
+    "weight": 12,
+    "magic_level": 1,
+    "titles": ["Company Commander", "Mercenary Lord", "Captain-General", "War Master", "Band Leader"],
+    "military_titles": ["Battle Captain", "War Leader", "Field Commander", "Veteran Sergeant"],
+    "governor_titles": ["Garrison Commander", "Fort Captain", "Outpost Leader", "Military Governor"]
+  }
+] 

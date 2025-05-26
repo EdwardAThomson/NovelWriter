@@ -1,4 +1,4 @@
-from .SciFiGenerator import _generate_base_name, CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES
+from .SciFiGenerator import _generate_base_name, generate_character_name, CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES
 import random
 import json
 from datetime import datetime
@@ -183,30 +183,61 @@ class Character:
         """Generate family members for the character based on their age and role."""
         surname = self.name.split(" ")[-1] if " " in self.name else "UnknownSurname"
         
-        # Parents (Simplified logic)
-        if self.age and self.age < 55:  # Higher chance parents are relevant/alive if younger
-            if random.random() < 0.8:  # 80% chance to mention parents
-                father_name = f"{_generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES)} {surname}"
-                mother_name = f"{_generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES)} {surname}"
-                status = "Living" if self.age < 45 else "Possibly Deceased/Retired"
-                self.family['parents'].append({
-                    'name': father_name,
-                    'relation': 'father',
-                    'status': status,
-                    'gender': 'Male'
-                })
-                self.family['parents'].append({
-                    'name': mother_name,
-                    'relation': 'mother',
-                    'status': status,
-                    'gender': 'Female'
-                })
+        # Parents - Always generate parents, but determine their status based on character's age and circumstances
+        father_name = f"{generate_character_name('Male')} {surname}"
+        mother_name = f"{generate_character_name('Female')} {surname}"
+        
+        # Determine parent status based on character's age and random factors
+        def determine_parent_status(character_age):
+            if not character_age:
+                character_age = 30  # Default age if not set
+            
+            if character_age < 25:
+                # Young character - parents very likely alive
+                return random.choices(
+                    ["Living", "Deceased", "Estranged", "Missing"],
+                    weights=[85, 8, 5, 2]
+                )[0]
+            elif character_age < 40:
+                # Middle-aged character - parents likely alive but some chance of loss
+                return random.choices(
+                    ["Living", "Deceased", "Estranged", "Missing"],
+                    weights=[70, 20, 7, 3]
+                )[0]
+            elif character_age < 55:
+                # Older character - higher chance parents are deceased
+                return random.choices(
+                    ["Living", "Deceased", "Estranged", "Missing"],
+                    weights=[50, 40, 7, 3]
+                )[0]
+            else:
+                # Very old character - parents likely deceased
+                return random.choices(
+                    ["Living", "Deceased", "Estranged", "Missing"],
+                    weights=[20, 70, 7, 3]
+                )[0]
+        
+        father_status = determine_parent_status(self.age)
+        mother_status = determine_parent_status(self.age)
+        
+        self.family['parents'].append({
+            'name': father_name,
+            'relation': 'Father',
+            'status': father_status,
+            'gender': 'Male'
+        })
+        self.family['parents'].append({
+            'name': mother_name,
+            'relation': 'Mother',
+            'status': mother_status,
+            'gender': 'Female'
+        })
 
         # Siblings
         num_siblings = random.randint(0, 2)
         for _ in range(num_siblings):
-            sibling_name = f"{_generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES)} {surname}"
             sibling_gender = random.choice(["Male", "Female"])
+            sibling_name = f"{generate_character_name(sibling_gender)} {surname}"
             self.family['siblings'].append({
                 'name': sibling_name,
                 'relation': 'sibling',
@@ -215,8 +246,8 @@ class Character:
 
         # Spouse
         if self.age and self.age > 28 and random.random() < 0.6:  # 60% chance if > 28
-            spouse_name = f"{_generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES)} {_generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES)}"
-            spouse_gender = random.choice(["Male", "Female"])
+            spouse_gender = "Female" if self.gender == "Male" else "Male"
+            spouse_name = f"{generate_character_name(spouse_gender)} {_generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES)}"
             self.family['spouse'] = {
                 'name': spouse_name,
                 'relation': 'spouse',
@@ -227,8 +258,8 @@ class Character:
         if self.age and self.age > 30 and self.family['spouse'] and random.random() < 0.7:  # 70% chance if married & > 30
             num_children = random.randint(1, 2)
             for _ in range(num_children):
-                child_name = f"{_generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES)} {surname}"
                 child_gender = random.choice(["Male", "Female"])
+                child_name = f"{generate_character_name(child_gender)} {surname}"
                 self.family['children'].append({
                     'name': child_name,
                     'relation': 'child',
@@ -268,7 +299,14 @@ def generate_main_characters(num_characters=3, female_percentage=50, male_percen
     factions_data = None
     try:
         with open("current_work/factions.json", 'r') as f:
-            factions_data = json.load(f)
+            data = json.load(f)
+            # Handle both direct list format and wrapped format
+            if isinstance(data, list):
+                factions_data = data
+            elif isinstance(data, dict) and "factions" in data:
+                factions_data = data["factions"]
+            else:
+                factions_data = data
             print(f"Loaded factions data: Found {len(factions_data)} factions")
     except FileNotFoundError:
         print("No factions file found - characters will be generated without faction affiliations")
@@ -471,14 +509,26 @@ def generate_main_characters(num_characters=3, female_percentage=50, male_percen
             # Generate gender first
             gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
             
-            # Use _generate_base_name from SciFiGenerator for name generation
-            first_name = _generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES)
+            # Use generate_character_name from SciFiGenerator for name generation
+            first_name = generate_character_name(gender)
             last_name = _generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES, middle_chance=0.4)
             full_name = f"{first_name} {last_name}"
             
             role = roles[i]
             char = Character(full_name, role)
             char.gender = gender
+            
+            # Initialize faction_role for supporting characters
+            if role == "supporting":
+                supporting_character_count += 1
+                if supporting_character_count <= 2:
+                    char.faction_role = "Protagonist Ally"
+                elif supporting_character_count <= 4:
+                    char.faction_role = "Antagonist Ally"
+                else:
+                    char.faction_role = "Neutral"
+            else:
+                char.faction_role = None
             
             # Assign age based on role
             min_age, max_age = 25, 45  # Default for Protagonist/Deuteragonist
@@ -551,22 +601,18 @@ def generate_main_characters(num_characters=3, female_percentage=50, male_percen
                         deuteragonist_planets = habitable_planets
                     homeworld = random.choice(deuteragonist_planets)
                 else:  # supporting
-                    supporting_character_count += 1
-                    if supporting_character_count <= 2:
+                    if char.faction_role == "Protagonist Ally":
                         supporting_planets = [p for p in habitable_planets if p["faction"] == protagonist_faction]
                         if not supporting_planets:
                             supporting_planets = habitable_planets
                         homeworld = random.choice(supporting_planets)
-                        char.faction_role = "Protagonist Ally"
-                    elif supporting_character_count <= 4:
+                    elif char.faction_role == "Antagonist Ally":
                         supporting_planets = [p for p in habitable_planets if p["faction"] == antagonist_faction]
                         if not supporting_planets:
                             supporting_planets = habitable_planets
                         homeworld = random.choice(supporting_planets)
-                        char.faction_role = "Antagonist Ally"
-                    else:
+                    else:  # Neutral
                         homeworld = random.choice(habitable_planets)
-                        char.faction_role = "Neutral"
                 
                 char.homeworld = homeworld["name"]
                 char.home_system = homeworld["system"]
@@ -575,7 +621,8 @@ def generate_main_characters(num_characters=3, female_percentage=50, male_percen
             characters.append(char)
             
         except Exception as e:
-            print(f"Error generating character {i} ({role}): {e}")
+            role_name = roles[i] if i < len(roles) else "unknown"
+            print(f"Error generating character {i} ({role_name}): {e}")
             continue
     
     return characters
@@ -619,9 +666,14 @@ def print_character(character):
             print(f"Faction Role: {character.faction_role}")
     
     # Print location information if it exists
-    if character.homeworld:
+    if hasattr(character, 'homeworld') and character.homeworld:
         print(f"Homeworld: {character.homeworld}")
         print(f"Star System: {character.home_system}")
+    elif hasattr(character, 'homeland') and character.homeland:
+        print(f"Homeland: {character.homeland}")
+        print(f"Home Region: {character.home_region}")
+        if hasattr(character, 'race') and character.race:
+            print(f"Race: {character.race}")
     
     # Print character traits
     print("\nCharacter Details:")
@@ -655,16 +707,31 @@ def save_characters_to_file(characters, filename="characters.json"):
             "strengths": char.strengths,
             "arc": char.arc,
             "background": char.background,
-            "homeworld": char.homeworld,
-            "home_system": char.home_system,
             "faction": char.faction,
             "description": char.description,
             "family": char.family  # Add family information to the saved data
         }
+        
+        # Add optional attributes if they exist
         if char.title:
             char_dict["title"] = char.title
         if char.faction_role:
             char_dict["faction_role"] = char.faction_role
+            
+        # Add genre-specific attributes if they exist
+        # Sci-Fi attributes
+        if hasattr(char, 'homeworld') and char.homeworld:
+            char_dict["homeworld"] = char.homeworld
+        if hasattr(char, 'home_system') and char.home_system:
+            char_dict["home_system"] = char.home_system
+            
+        # Fantasy attributes
+        if hasattr(char, 'homeland') and char.homeland:
+            char_dict["homeland"] = char.homeland
+        if hasattr(char, 'home_region') and char.home_region:
+            char_dict["home_region"] = char.home_region
+        if hasattr(char, 'race') and char.race:
+            char_dict["race"] = char.race
             
         char_dicts.append(char_dict)
     

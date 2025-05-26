@@ -28,7 +28,7 @@ class StoryStructure:
         self.f_arc_button = ttk.Button(self.story_structure_frame, text="Generate Faction Arcs", command=self.generate_faction_arcs)
         self.f_arc_button.pack(pady=20)
 
-        self.cfp_arc_button = ttk.Button(self.story_structure_frame, text="Add Planets to Arcs", command=self.add_planets_to_arcs)
+        self.cfp_arc_button = ttk.Button(self.story_structure_frame, text="Add Locations to Arcs", command=self.add_planets_to_arcs)
         self.cfp_arc_button.pack(pady=20)
 
         # Generate Structure Buttons
@@ -516,18 +516,30 @@ class StoryStructure:
             # traceback.print_exc() # Handled by logger
             messagebox.showerror("Error", f"An unexpected error occurred: {str(e)}")
 
-    # Add in the locations (planets) to the reconciled story arc
-    # TODO: review if this is needed. Perhaps we can skip and add planets later since we have the factions.json
+    # Add in the locations to the reconciled story arc (generic for all genres)
     def add_planets_to_arcs(self):
         selected_model = self.app.get_selected_model()
         output_dir = self.app.get_output_dir()
         os.makedirs(output_dir, exist_ok=True)
-        self.app.logger.info(f"Adding Planet Locations to Arcs. Model: {selected_model}, Output Dir: {output_dir}")
+        
+        # Get current genre to determine location type
+        try:
+            from Generators.GenreHandlers import get_genre_handler
+            params = self.app.param_ui.get_current_parameters()
+            current_genre = params.get("genre", "Sci-Fi")
+            genre_handler = get_genre_handler(current_genre)
+            location_type_name = genre_handler.get_location_type_name()
+        except Exception as e:
+            self.app.logger.warning(f"Could not determine genre for location type: {e}. Using default.")
+            location_type_name = "Locations"
+            genre_handler = None
+        
+        self.app.logger.info(f"Adding {location_type_name} to Arcs. Model: {selected_model}, Output Dir: {output_dir}")
         
         # Define file paths
         reconciled_arcs_file_path = os.path.join(output_dir, "reconciled_arcs.md")
-        factions_json_file_path = os.path.join(output_dir, "factions.json") # Assuming factions.json is in output_dir
-        output_file_path = os.path.join(output_dir, "reconciled_planets_arcs.md")
+        factions_json_file_path = os.path.join(output_dir, "factions.json")
+        output_file_path = os.path.join(output_dir, "reconciled_locations_arcs.md")
         
         try:
             # Load the reconciled arcs
@@ -537,90 +549,106 @@ class StoryStructure:
                 messagebox.showerror("Error", f"Reconciled arcs file not found: {reconciled_arcs_file_path}. Cannot proceed.")
                 return
 
-            # Load factions and extract relevant planet data
-            planet_faction_info = []
+            # Load factions and extract relevant location data using genre handler
+            location_faction_info = []
             try:
-                # Assuming factions.json is read using helper_fns.read_json if available and suitable
-                # or direct open as it was. For now, direct open.
                 if not os.path.exists(factions_json_file_path):
                     raise FileNotFoundError
                 with open(factions_json_file_path, 'r', encoding='utf-8') as f:
                     factions_data = json.load(f)
                 
-                for faction in factions_data:
-                    faction_name = faction.get("faction_name", "Unknown Faction")
-                    systems = faction.get("systems", [])
-                    for system in systems:
-                        habitable_planets = system.get("habitable_planets", [])
-                        if habitable_planets: # Focus on habitable planets
-                             # Let's take the first habitable planet in the first system listed as a key location (e.g., capital)
-                             # More sophisticated logic could be added here (e.g., find planet with governor matching faction leader)
-                             key_planet = habitable_planets[0].get("name", "Unknown Planet")
-                             planet_faction_info.append(f"- {key_planet} (Controlled by {faction_name})")
-                             break # Only take one key planet per faction for simplicity in the prompt
+                if genre_handler:
+                    # Use genre-specific location extraction
+                    locations = genre_handler.get_location_info_from_factions(factions_data)
+                    for location in locations:
+                        location_faction_info.append(f"- {location['description']}")
+                else:
+                    # Fallback for unknown genres - try to extract basic info
+                    for faction in factions_data:
+                        faction_name = faction.get("faction_name", faction.get("name", "Unknown Faction"))
+                        # Try different possible location fields
+                        location_name = None
+                        if "systems" in faction:  # Sci-fi style
+                            for system in faction.get("systems", []):
+                                planets = system.get("habitable_planets", [])
+                                if planets:
+                                    location_name = f"{planets[0].get('name', 'Unknown')} in {system.get('name', 'Unknown System')}"
+                                    break
+                        elif "regions" in faction:  # Fantasy style
+                            for region in faction.get("regions", []):
+                                cities = region.get("cities", [])
+                                if cities:
+                                    location_name = f"{cities[0].get('name', 'Unknown')} in {region.get('name', 'Unknown Region')}"
+                                    break
+                        elif "territory" in faction:  # Western/other styles
+                            location_name = faction.get("territory", "Unknown Territory")
+                        
+                        if location_name:
+                            location_faction_info.append(f"- {location_name} (Controlled by {faction_name})")
+                            
             except FileNotFoundError:
-                 messagebox.showerror("Error", f"Factions file not found: {factions_json_file_path}. Cannot extract planet info.")
+                 messagebox.showerror("Error", f"Factions file not found: {factions_json_file_path}. Cannot extract location info.")
                  return
             except json.JSONDecodeError:
                  messagebox.showerror("Error", f"Error decoding JSON from {factions_json_file_path}.")
                  return
                  
-            if not planet_faction_info:
-                messagebox.showwarning("Warning", "Could not extract relevant planet/faction information from factions.json.")
-                planet_list_str = "No specific planet data available."
+            if not location_faction_info:
+                messagebox.showwarning("Warning", f"Could not extract relevant {location_type_name.lower()}/faction information from factions.json.")
+                location_list_str = f"No specific {location_type_name.lower()} data available."
             else:
-                planet_list_str = "\n".join(planet_faction_info)
+                location_list_str = "\n".join(location_faction_info)
 
-            # Build the prompt
+            # Build the prompt (genre-agnostic)
             prompt_lines = [
-                "I am writing a science fiction novel and need help adding specific planet locations to the story arc.",
-                "Below is the reconciled story arc for characters and factions, followed by a list of key planets and the factions that control them.",
-                "Please rewrite the story arc, weaving in appropriate planet locations from the provided list where actions occur.",
-                "Ensure the chosen planets align logically with the factions involved in each part of the arc.",
-                "Do not add planets not on the list. Preserve the original arc structure and details as much as possible, only adding the location context.",
+                f"I am writing a {current_genre.lower()} novel and need help adding specific {location_type_name.lower()} to the story arc.",
+                f"Below is the reconciled story arc for characters and factions, followed by a list of key {location_type_name.lower()} and the factions that control them.",
+                f"Please rewrite the story arc, weaving in appropriate {location_type_name.lower()} from the provided list where actions occur.",
+                f"Ensure the chosen {location_type_name.lower()} align logically with the factions involved in each part of the arc.",
+                f"Do not add {location_type_name.lower()} not on the list. Preserve the original arc structure and details as much as possible, only adding the location context.",
                 "\n## Reconciled Story Arc:",
                 reconciled_arcs_content,
-                "\n## Key Planets and Controlling Factions:",
-                planet_list_str, # Use the extracted planet list
-                "\nPlease provide the revised story arc with integrated planet locations:"
+                f"\n## Key {location_type_name} and Controlling Factions:",
+                location_list_str,
+                f"\nPlease provide the revised story arc with integrated {location_type_name.lower()}:"
             ]
             prompt = "\n".join(prompt_lines)
 
             # Save the prompt
-            prompt_filepath = save_prompt_to_file(output_dir, "add_planets_to_arcs_prompt", prompt)
+            prompt_filepath = save_prompt_to_file(output_dir, "add_locations_to_arcs_prompt", prompt)
             if prompt_filepath:
-                self.app.logger.info(f"Add Planets to Arcs Prompt (length {len(prompt)}) saved to: {prompt_filepath}")
+                self.app.logger.info(f"Add {location_type_name} to Arcs Prompt (length {len(prompt)}) saved to: {prompt_filepath}")
             else:
-                self.app.logger.error(f"Failed to save Add Planets to Arcs Prompt. Length: {len(prompt)}.")
+                self.app.logger.error(f"Failed to save Add {location_type_name} to Arcs Prompt. Length: {len(prompt)}.")
                 if self.app.logger.isEnabledFor(logging.DEBUG):
-                    self.app.logger.debug(f"Fallback: Full Add Planets to Arcs Prompt:\n{prompt}")
+                    self.app.logger.debug(f"Fallback: Full Add {location_type_name} to Arcs Prompt:\n{prompt}")
                 else:
-                    self.app.logger.warning("Add Planets to Arcs Prompt not logged directly. Enable DEBUG for full prompt.")
+                    self.app.logger.warning(f"Add {location_type_name} to Arcs Prompt not logged directly. Enable DEBUG for full prompt.")
 
             # Send prompt to LLM
             log_msg_prompt_source = f"(from {prompt_filepath})" if prompt_filepath else "(from memory, save failed)"
-            self.app.logger.info(f"Sending Add Planets to Arcs Prompt {log_msg_prompt_source} to LLM ({selected_model})...")
+            self.app.logger.info(f"Sending Add {location_type_name} to Arcs Prompt {log_msg_prompt_source} to LLM ({selected_model})...")
             response = send_prompt(prompt, model=selected_model)
             
             if not response:
-                self.app.logger.error(f"Failed to get response from LLM ({selected_model}) when adding planets.")
-                messagebox.showerror("Error", "Failed to get response from LLM when adding planets.")
+                self.app.logger.error(f"Failed to get response from LLM ({selected_model}) when adding {location_type_name.lower()}.")
+                messagebox.showerror("Error", f"Failed to get response from LLM when adding {location_type_name.lower()}.")
                 return
 
-            self.app.logger.info(f"Received response from LLM for adding planets. Length: {len(response)}.")
+            self.app.logger.info(f"Received response from LLM for adding {location_type_name.lower()}. Length: {len(response)}.")
             # Save the response
             write_file(output_file_path, response)
-            self.app.logger.info(f"Story arc with planets saved to {output_file_path}")
-            messagebox.showinfo("Success", f"Added planet locations. Result saved to {output_file_path}")
+            self.app.logger.info(f"Story arc with {location_type_name.lower()} saved to {output_file_path}")
+            messagebox.showinfo("Success", f"Added {location_type_name.lower()}. Result saved to {output_file_path}")
 
         except FileNotFoundError as fnf_e:
-            self.app.logger.error(f"File not found during add_planets_to_arcs: {fnf_e}", exc_info=True)
+            self.app.logger.error(f"File not found during add_locations_to_arcs: {fnf_e}", exc_info=True)
             messagebox.showerror("Error", f"File not found: {str(fnf_e)}")
         except json.JSONDecodeError as json_e:
-            self.app.logger.error(f"JSON decode error during add_planets_to_arcs: {json_e}", exc_info=True)
+            self.app.logger.error(f"JSON decode error during add_locations_to_arcs: {json_e}", exc_info=True)
             messagebox.showerror("Error", f"Error decoding JSON data: {str(json_e)}")
         except Exception as e:
-            self.app.logger.error(f"Failed to add planets to arcs: {e}", exc_info=True)
+            self.app.logger.error(f"Failed to add {location_type_name.lower()} to arcs: {e}", exc_info=True)
             # traceback.print_exc() # Handled by logger
             messagebox.showerror("Error", f"An unexpected error occurred: {str(e)}")
 
@@ -782,7 +810,10 @@ class StoryStructure:
             return
 
         try:
-            story_structure_path = os.path.join(output_dir, "reconciled_planets_arcs.md")
+            # Try the new generic filename first, fall back to old filename for backward compatibility
+            story_structure_path = os.path.join(output_dir, "reconciled_locations_arcs.md")
+            if not os.path.exists(story_structure_path):
+                story_structure_path = os.path.join(output_dir, "reconciled_planets_arcs.md")
             story_structure_content = open_file(story_structure_path)
             
             
@@ -798,7 +829,7 @@ class StoryStructure:
                     f"I am writing a science fiction novel using the '{selected_structure_name}' framework and need help fleshing out its parts.",
                     f"The overall framework consists of these parts: {', '.join(sections_to_iterate)}.",
                     f"Please write out a lot more detail specifically for the part: **{current_section_name_for_prompt}**. We are NOT writing individual scenes yet, but rather a more detailed summary for this part of the story.",
-                    f"\n## Overall Story Structure Context (from reconciled_planets_arcs.md):\n{story_structure_content}"
+                    f"\n## Overall Story Structure Context (from {os.path.basename(story_structure_path)}):\n{story_structure_content}"
                 ]
 
                 # Add context from the immediately preceding detailed section (if not the first section)
@@ -909,12 +940,15 @@ class StoryStructure:
             self.app.logger.warning(f"Could not load lore: {e}")
 
         try:
-            arcs_path = os.path.join(output_dir, "reconciled_planets_arcs.md")
+            # Try the new generic filename first, fall back to old filename for backward compatibility
+            arcs_path = os.path.join(output_dir, "reconciled_locations_arcs.md")
+            if not os.path.exists(arcs_path):
+                arcs_path = os.path.join(output_dir, "reconciled_planets_arcs.md")
             if os.path.exists(arcs_path):
                 reconciled_arcs_content = open_file(arcs_path)
                 self.app.logger.info(f"Loaded reconciled arcs from {arcs_path}")
         except Exception as e:
-            self.app.logger.warning(f"Could not load reconciled_planets_arcs.md: {e}")
+            self.app.logger.warning(f"Could not load reconciled arcs file: {e}")
         
         # Basic character and faction summaries (can be expanded)
         try:
@@ -954,7 +988,7 @@ class StoryStructure:
             "Ensure the plot flows logically and cohesively from one stage to the next, building towards the story's climax and resolution.",
             "\n## Overall Universe Lore Context:",
             lore_content,
-            "\n## Character Arcs & Faction Context (from reconciled_planets_arcs.md, if available):",
+            f"\n## Character Arcs & Faction Context (from {os.path.basename(arcs_path) if 'arcs_path' in locals() else 'reconciled arcs file'}, if available):",
             reconciled_arcs_content,
             "\n## Key Characters Summary:",
             characters_summary,

@@ -5,6 +5,53 @@
 *(New entries will be added here in reverse chronological order)*
 
 
+## 2025-05-26 - Multi-Genre Architecture: From Sci-Fi Only to Universal Story Generation
+
+One of the most significant architectural changes to NovelWriter has been the expansion from a sci-fi-only tool to a comprehensive multi-genre story generation platform. This transformation required a complete rethinking of the application's core systems.
+
+### The Challenge
+The original NovelWriter was hardcoded for science fiction, with faction generation, character attributes, and world-building all specifically designed around space-faring civilizations, planetary systems, and technological themes. While this worked well for sci-fi stories, it became clear that the underlying approach could be generalized to support other genres with their own unique conventions and requirements.
+
+### Genre Handler System
+The solution was implementing a modular genre handler architecture:
+
+- **Base Handler Interface**: Defined common methods that all genres must implement (faction generation, character creation, location systems, etc.)
+- **Specialized Handlers**: Created dedicated handlers for 8 major genres, each with genre-specific logic
+- **Dynamic Configuration**: Genre-specific UI tabs and parameters that adapt based on the selected genre
+
+### Genre-Specific Adaptations
+Each genre required careful consideration of its unique elements:
+
+- **Sci-Fi**: Planetary systems, space factions, homeworld/home_system attributes
+- **Fantasy**: Regional kingdoms, magical cities, race attributes, magic abilities
+- **Historical Fiction**: Period-appropriate factions, social classes, historical territories
+- **Horror**: Cults and supernatural organizations, sanity mechanics
+- **Mystery**: Law enforcement agencies, investigation territories
+- **Romance**: Social groups and family networks, relationship dynamics
+- **Thriller**: Intelligence agencies, operational territories, security clearances
+- **Western**: Frontier towns, territorial organizations, reputation systems
+
+### Technical Implementation
+The refactoring involved:
+
+1. **Abstraction of Core Systems**: Extracting common functionality while allowing genre-specific customization
+2. **Location Generalization**: Converting the hardcoded "planets" system to a generic "locations" system that works across genres
+3. **Character Generation Overhaul**: Implementing genre-specific character generators with appropriate attributes and family structures
+4. **Faction System Redesign**: Supporting different organizational types (factions, agencies, social groups, cults) based on genre conventions
+5. **UI Adaptation**: Dynamic parameter tabs that show relevant options for each genre/subgenre combination
+
+### Challenges and Solutions
+- **Data Format Compatibility**: Ensuring faction data could be processed consistently across genres while maintaining genre-specific structure
+- **Character Attribute Mapping**: Different genres needed different character attributes (homeworld vs homeland vs territory)
+- **Story Arc Integration**: Making location-based storytelling work generically across all genres
+- **Configuration Management**: Creating a flexible system for genre-specific settings and parameters
+
+### Results
+The multi-genre architecture has transformed NovelWriter from a niche sci-fi tool into a versatile story generation platform. Each genre now feels authentic to its conventions while sharing the same underlying story structure and generation pipeline. The modular design also makes it easier to add new genres in the future.
+
+This expansion represents a fundamental shift in the project's scope and demonstrates how a well-designed architecture can evolve to support much broader use cases than originally envisioned.
+
+
 ## 2025-05-23 - New features, new documentation, overhaul of early process (background lore)
 I made many updates to the app. A few updates to the process were made on the back of the challenges I faced with earlier versions of the app. One of the biggest challenges was the poor randomness from LLMs such as in the generation of names. This has been remedied by generating names locally without the help of LLMs.
 

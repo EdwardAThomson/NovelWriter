@@ -4,52 +4,202 @@ import os
 from datetime import datetime
 import re
 
-# --- Name fragments for Factions, Planets, Characters ---
-FACTION_PREFIXES = [
-    "Zora", "Val", "Tar", "Xeno", "Vela", "Kora", "Syla", "Mar", "Nova", "Rila",
-    "Vex", "Thera", "Kalos", "Xer", "Sero", "Jyn", "Brev", "Crom", "Drak", "Elgo",
-    "Fane", "Gral", "Hesk", "Ilum", "Karth", "Lyra", "Myr", "Nym", "Ordo", "Pryx",
-    "Quell", "Rax", "Skarn", "Tyro", "Uth", "Vorn", "Wren", "Yss", "Zyl", "Axos",
-    "Bryll", "Cthon", "Durn", "Hyth", "Ixor", "Jaxx", "Krell"
-]
-FACTION_MIDDLES = [
-    "th", "o", "en", "av", "il", "ex", "ar", "end", "onis", "in", "a", "um", "el", "ir", "az",
-    "ec", "yr", "oa", "iss", "eth", "orb", "ask", "ull", "emn", "ypt", "org", "osp", "ix", "ath", "yth"
-]
-FACTION_SUFFIXES = [
-    "Prime", "dor", "zar", "ion", "us", "an", "ox", "ane", "on", "is", "o", "ia", "gard", "ium", "eth",
-    "ica", "atis", "orim", "dyn"
-]
+# --- Improved Name Generation System ---
 
-PLANET_PREFIXES = [
-    "Ar", "Xy", "Ko", "Ze", "Vi", "Gha", "Ri", "Mol", "Tar", "Ik", "Ul", "Ba", "Cy", "De", "El",
-    "Fy", "Ho", "Ja", "Ke", "La", "Me", "Ni", "Ob", "Pa", "Qu", "Ra", "Si", "Te", "Ur", "Ve",
-    "Wo", "Xe", "Yi", "Zo", "Aka", "Bel", "Cor", "Dra", "Eri", "Fen", "Gry", "Hyl", "Ist", "Jor"
-]
-PLANET_MIDDLES = [
-    "a", "o", "er", "om", "in", "ir", "ul", "ex", "or", "us", "an", "ith", "yst", "orb", "ent", "ath",
-    "emn", "ilv", "ond", "yrr", "ax", "ez", "ael", "ion", "yth", "ars", "esp", "ull", "oct", "id"
-]
-PLANET_SUFFIXES = [
-    "dia", "mon", "rax", "gen", "tia", "n Prime", "lon", "nor", "xis", "phi", "lya", "seth", "tara", "vor",
-    "clya", "dion", "goth", "hylon", "jovir", "kynth", "lyr", "myr", "nov", "pyr", "qor", "rhos", "syl",
-    "thos", "vyl", "wynn", "zylos" #, "alpha", "beta", "gamma", "delta", "epsilon", "zeta", "omega"
-]
+# Syllable-based name generation for better phonetic flow
+FACTION_SYLLABLES = {
+    "start": ["Zor", "Val", "Tar", "Xen", "Vel", "Kor", "Syl", "Mar", "Nov", "Ril",
+              "Vex", "Ther", "Kal", "Xer", "Ser", "Jyn", "Brev", "Crom", "Drak", "Elg",
+              "Fan", "Gral", "Hesk", "Il", "Karth", "Lyr", "Myr", "Nym", "Ord", "Pryx",
+              "Quel", "Rax", "Skarn", "Tyr", "Uth", "Vorn", "Wren", "Yss", "Zyl", "Ax"],
+    "middle": ["a", "o", "en", "av", "il", "ex", "ar", "in", "um", "el", "ir", "az",
+               "ec", "yr", "oa", "eth", "orb", "ask", "ull", "emn", "ypt", "org", "ix"],
+    "end": ["Prime", "dor", "zar", "ion", "us", "an", "ox", "ane", "on", "is", "ia", 
+            "gard", "ium", "eth", "ica", "atis", "orim", "dyn"]
+}
 
-CHAR_PREFIXES = [
-    "Aro", "Sola", "Tae", "Rev", "Zan", "Pyra", "Kel", "Xen", "Mira", "Vel", "Sy", "Rin", "Kor", "Jax", "Lys",
-    "Bram", "Cael", "Dario", "Elara", "Finn", "Gwen", "Hale", "Iris", "Jorn", "Kael", "Lira", "Mael", "Nara",
-    "Orin", "Perrin", "Quinn", "Roric", "Seraph", "Taryn", "Ulric", "Vanya", "Wynn", "Yara", "Zephyr", "Astrid",
-    "Borin", "Cassia", "Draven", "Evian", "Faelan", "Galen", "Haven", "Illya", "Jovin", "Kyra", "Lucian", "Maeve"
-]
-CHAR_MIDDLES = [
-    "a", "i", "o", "e", "u", "en", "il", "or", "av", "ex", "an", "ir", "ael", "ian", "ona", "ara", "eli",
-    "ira", "eus", "ius", "ael", "ine", "ara", "ia", "ia", "ya", "ea", "eo", "ae", "io", "oi", "ai", "ay"
-]
-CHAR_SUFFIXES = [
-    "th", "la", "n", "r", "x", "ia", "s", "ar", "us", "on", "ir", "el", "an", "en", "in", "os", "as", "es", "is",
-    "ys", "ax", "ex", "ix", "ox", "ux", "lyn", "wyn", "den", "len", "ren", "sen", "van", "zan", "bal", "cal", "dal"
-]
+PLANET_SYLLABLES = {
+    "start": ["Ar", "Xy", "Ko", "Ze", "Vi", "Gha", "Ri", "Mol", "Tar", "Ik", "Ul", "Ba", 
+              "Cy", "De", "El", "Fy", "Ho", "Ja", "Ke", "La", "Me", "Ni", "Ob", "Pa", 
+              "Qu", "Ra", "Si", "Te", "Ur", "Ve", "Wo", "Xe", "Yi", "Zo", "Ak", "Bel", 
+              "Cor", "Dra", "Eri", "Fen", "Gry", "Hyl", "Ist", "Jor"],
+    "middle": ["a", "o", "er", "om", "in", "ir", "ul", "ex", "or", "us", "an", "ith", 
+               "yst", "orb", "ent", "ath", "emn", "ilv", "ond", "yrr", "ax", "ez", 
+               "ion", "yth", "ars", "esp", "oct", "id"],
+    "end": ["dia", "mon", "rax", "gen", "tia", "lon", "nor", "xis", "phi", "lya", "seth", 
+            "tara", "vor", "clya", "dion", "goth", "hylon", "jovir", "kynth", "lyr", 
+            "myr", "nov", "pyr", "qor", "rhos", "syl", "thos", "vyl", "wynn", "zylos"]
+}
+
+# Character names use a different approach - shorter, more pronounceable
+CHAR_FIRST_SYLLABLES = {
+    "start": ["Ar", "Bel", "Cael", "Dar", "El", "Fen", "Gal", "Hal", "Ir", "Jor", 
+              "Kel", "Lir", "Mor", "Nar", "Or", "Pyr", "Quin", "Ren", "Syl", "Tar", 
+              "Ul", "Vel", "Wyn", "Xar", "Yor", "Zel", "Ash", "Brix", "Cor", "Dex",
+              "Ev", "Fox", "Grim", "Hex", "Ix", "Jax", "Kyr", "Lux", "Max", "Nyx"],
+    "end": ["a", "an", "ar", "as", "en", "er", "es", "ia", "in", "is", "on", "or", 
+            "us", "yn", "ys", "el", "al", "il", "ol", "ul", "ex", "ax", "ix", "ox"]
+}
+
+CHAR_LAST_SYLLABLES = {
+    "start": ["Zar", "Vex", "Kyr", "Nyx", "Rax", "Dex", "Lyx", "Myr", "Pyx", "Qor", 
+              "Syx", "Tyx", "Vyr", "Wyx", "Xar", "Yor", "Zyx", "Bex", "Cyr", "Fyx", 
+              "Gex", "Hex", "Jyx", "Kex", "Lex", "Nex", "Rex", "Tex", "Vex", "Zex"],
+    "end": ["an", "ar", "as", "ax", "en", "er", "es", "ex", "in", "ir", "is", "ix", 
+            "on", "or", "os", "ox", "un", "ur", "us", "ux", "yn", "yr", "ys", "yx",
+            "ael", "iel", "oel", "uel", "aen", "ien", "oen", "uen", "ath", "eth", "oth"]
+}
+
+# Phonetic compatibility rules to avoid awkward combinations
+VOWELS = set('aeiou')
+CONSONANTS = set('bcdfghjklmnpqrstvwxyz')
+
+def is_phonetically_compatible(syllable1, syllable2):
+    """Check if two syllables flow well together phonetically."""
+    if not syllable1 or not syllable2:
+        return True
+    
+    end_char = syllable1[-1].lower()
+    start_char = syllable2[0].lower()
+    
+    # Avoid double vowels or consonants that don't flow
+    if end_char in VOWELS and start_char in VOWELS:
+        # Some vowel combinations are okay
+        if end_char + start_char in ['ae', 'ai', 'ao', 'ea', 'ei', 'eo', 'ia', 'ie', 'io', 'oa', 'oe', 'oi', 'ua', 'ue', 'ui']:
+            return True
+        return False
+    
+    # Avoid harsh consonant clusters
+    if end_char in CONSONANTS and start_char in CONSONANTS:
+        harsh_clusters = ['ck', 'gk', 'pk', 'tk', 'xk', 'zk', 'qx', 'xq']
+        if end_char + start_char in harsh_clusters:
+            return False
+    
+    return True
+
+def generate_sci_fi_name(syllable_dict, max_syllables=2, min_length=3, max_length=12, force_multi_syllable=False):
+    """
+    Generate a sci-fi name using syllable dictionary with phonetic rules.
+    
+    Args:
+        syllable_dict: Dictionary with 'start', 'middle' (optional), 'end' keys
+        max_syllables: Maximum number of syllables (default 2 for shorter names)
+        min_length: Minimum character length
+        max_length: Maximum character length
+        force_multi_syllable: If True, always generate at least 2 syllables
+    """
+    attempts = 0
+    max_attempts = 50
+    
+    while attempts < max_attempts:
+        name_parts = []
+        
+        # Always start with a start syllable
+        start_syl = random.choice(syllable_dict["start"])
+        name_parts.append(start_syl)
+        
+        # Decide how many total syllables
+        if force_multi_syllable:
+            num_syllables = random.randint(2, max_syllables)  # Force at least 2
+        else:
+            num_syllables = random.randint(1, max_syllables)
+        
+        # Add middle syllables if we have them and need more than 2 total
+        if num_syllables > 2 and "middle" in syllable_dict:
+            for _ in range(num_syllables - 2):
+                middle_candidates = [m for m in syllable_dict["middle"] 
+                                   if is_phonetically_compatible(name_parts[-1], m)]
+                if middle_candidates:
+                    middle_syl = random.choice(middle_candidates)
+                    name_parts.append(middle_syl)
+        
+        # Add end syllable if we need more than 1 syllable
+        if num_syllables > 1:
+            end_candidates = [e for e in syllable_dict["end"] 
+                            if is_phonetically_compatible(name_parts[-1], e)]
+            if end_candidates:
+                end_syl = random.choice(end_candidates)
+                name_parts.append(end_syl)
+        
+        # Combine and check length
+        name = "".join(name_parts)
+        if min_length <= len(name) <= max_length:
+            return name.capitalize()
+        
+        attempts += 1
+    
+    # Fallback: create a simple 2-syllable name
+    start_syl = random.choice(syllable_dict["start"])
+    end_syl = random.choice(syllable_dict["end"])
+    return (start_syl + end_syl).capitalize()
+
+def generate_character_name(gender=None):
+    """Generate a character first name (short and pronounceable), optionally gender-specific."""
+    if gender == "Male":
+        # Generate male-sounding sci-fi names
+        male_names = [
+            "Zephyr", "Orion", "Vex", "Kael", "Dex", "Jax", "Raven", "Phoenix", "Cyrus", "Axel",
+            "Zander", "Knox", "Rex", "Blaze", "Sage", "Kai", "Neo", "Zion", "Lex", "Vance",
+            "Ryker", "Jett", "Zane", "Colt", "Dash", "Flux", "Nyx", "Onyx", "Raze", "Vex",
+            "Ares", "Atlas", "Caspian", "Dante", "Echo", "Felix", "Gideon", "Hunter", "Ivan", "Jasper"
+        ]
+        return random.choice(male_names)
+    elif gender == "Female":
+        # Generate female-sounding sci-fi names
+        female_names = [
+            "Nova", "Lyra", "Zara", "Vega", "Aria", "Luna", "Nyx", "Vera", "Iris", "Cora",
+            "Zoe", "Mira", "Kira", "Lux", "Sage", "Vale", "Wren", "Skye", "Jade", "Raven",
+            "Celeste", "Aurora", "Stella", "Seraphina", "Elektra", "Andromeda", "Cassiopeia", "Nebula", "Solara", "Vixen",
+            "Astra", "Bianca", "Celia", "Diana", "Elena", "Fiona", "Grace", "Hera", "Ivy", "Juno"
+        ]
+        return random.choice(female_names)
+    else:
+        # Original behavior for backwards compatibility
+        return generate_sci_fi_name(CHAR_FIRST_SYLLABLES, max_syllables=2, min_length=3, max_length=8, force_multi_syllable=True)
+
+def generate_character_surname():
+    """Generate a character surname (can be slightly longer)."""
+    return generate_sci_fi_name(CHAR_LAST_SYLLABLES, max_syllables=2, min_length=4, max_length=10, force_multi_syllable=True)
+
+def generate_faction_name_base():
+    """Generate the base name part of a faction (before descriptors)."""
+    return generate_sci_fi_name(FACTION_SYLLABLES, max_syllables=3, min_length=4, max_length=12)
+
+def generate_planet_name():
+    """Generate a planet name."""
+    return generate_sci_fi_name(PLANET_SYLLABLES, max_syllables=3, min_length=4, max_length=12)
+
+def generate_system_name():
+    """Generate a name for a solar system."""
+    base_name = generate_planet_name()
+    suffix = random.choice(["System", "Sector", "Cluster", "Star", "Prime"])
+    return f"{base_name} {suffix}"
+
+# Legacy compatibility function
+def _generate_base_name(prefixes, middles, suffixes, middle_chance=0.5, gender=None):
+    """Legacy function for backward compatibility - now uses new system."""
+    # Determine which type based on the prefix list content
+    if prefixes == CHAR_PREFIXES:
+        return generate_character_name(gender)
+    elif any("Prime" in s for s in suffixes):  # Faction names
+        return generate_faction_name_base()
+    else:  # Planet names
+        return generate_planet_name()
+
+# Update the constants to use the new syllable system
+FACTION_PREFIXES = FACTION_SYLLABLES["start"]
+FACTION_MIDDLES = FACTION_SYLLABLES["middle"] 
+FACTION_SUFFIXES = FACTION_SYLLABLES["end"]
+
+PLANET_PREFIXES = PLANET_SYLLABLES["start"]
+PLANET_MIDDLES = PLANET_SYLLABLES["middle"]
+PLANET_SUFFIXES = PLANET_SYLLABLES["end"]
+
+CHAR_PREFIXES = CHAR_FIRST_SYLLABLES["start"]
+CHAR_MIDDLES = CHAR_FIRST_SYLLABLES["end"]
+CHAR_SUFFIXES = CHAR_LAST_SYLLABLES["end"]
+
+
 CHAR_TITLES = [
     "Captain", "Commander", "Chancellor", "Archon", "Envoy", "Warden", "High Councilor"
 ]
@@ -191,8 +341,8 @@ def _generate_base_name(prefixes, middles, suffixes, middle_chance=0.5):
 # Internal helper to create a single named character dictionary
 def _generate_named_character(title_list, role, specific_title=None, female_percentage=50, male_percentage=50):
     """Generates a character with a name, title, and role, using numerical gender percentages."""
-    first_name = _generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES)
-    last_name = _generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES, middle_chance=0.4) # Slightly less chance for middle in last name
+    first_name = generate_character_name()
+    last_name = generate_character_surname()
     
     title = specific_title if specific_title else random.choice(title_list)
 
@@ -253,7 +403,7 @@ def generate_faction_name(profile):
     Generate a faction name using the profile's descriptors and
     randomly chosen sci-fi syllables.
     """
-    base_name = _generate_base_name(FACTION_PREFIXES, FACTION_MIDDLES, FACTION_SUFFIXES)
+    base_name = generate_faction_name_base()
     descriptor = random.choice(profile["descriptors"])
     return f"{base_name} {descriptor}"
 
@@ -312,21 +462,11 @@ def generate_planet_names(profile, num_planets=3):
     """
     planets = []
     for _ in range(num_planets):
-        prefix = random.choice(PLANET_PREFIXES)
-        middle = random.choice(PLANET_MIDDLES) if random.random() < 0.7 else ""
-        suffix = random.choice(PLANET_SUFFIXES)
-        planet_name = prefix + middle + suffix
+        planet_name = generate_planet_name()
         
         # Generate governor for this planet with faction-specific title
-        prefix = random.choice(CHAR_PREFIXES)
-        middle = random.choice(CHAR_MIDDLES) if random.random() < 0.5 else ""
-        suffix = random.choice(CHAR_SUFFIXES)
-        first_name = prefix + middle + suffix
-
-        prefix = random.choice(CHAR_PREFIXES)
-        middle = random.choice(CHAR_MIDDLES) if random.random() < 0.4 else ""
-        suffix = random.choice(CHAR_SUFFIXES)
-        last_name = prefix + middle + suffix
+        first_name = generate_character_name()
+        last_name = generate_character_surname()
 
         # Use faction-specific governor title
         title = random.choice(profile["governor_titles"])
@@ -396,10 +536,7 @@ def generate_solar_system(profile, system_number, female_percentage=50, male_per
     
     habitable_planets = []
     for i in range(habitable_count):
-        prefix = random.choice(PLANET_PREFIXES)
-        middle = random.choice(PLANET_MIDDLES) if random.random() < 0.7 else ""
-        suffix = random.choice(PLANET_SUFFIXES)
-        planet_name = prefix + middle + suffix
+        planet_name = generate_planet_name()
         
         # Determine if this specific planet is THE capital planet
         # It's the capital planet if it's the first habitable planet (i=0) in the capital system
@@ -883,16 +1020,7 @@ def calculate_military_assets(faction):
         "total_ships": sum(ships.values())
     }
 
-def generate_system_name():
-    """
-    Generate a name for a solar system.
-    """
-    prefix = random.choice(PLANET_PREFIXES)
-    middle = random.choice(PLANET_MIDDLES) if random.random() < 0.5 else ""
-    suffix = random.choice([
-        "System", "Sector", "Cluster", "Star", "Prime", "Major", "Minor"
-    ])
-    return f"{prefix}{middle} {suffix}"
+
 
 def determine_system_composition(star_type, is_capital_system=False):
     """

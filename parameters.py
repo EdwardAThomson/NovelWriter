@@ -16,6 +16,7 @@ from ai_helper import send_prompt
 from helper_fns import write_file, write_json, load_schema, validate_json_schema
 # from rag_helper import upsert_text
 from genre_configs import get_genre_config
+from Generators.GenreHandlers import get_supported_genres
 
 # --- Define Length and Structure Options ---
 # Simplified for initial implementation
@@ -148,7 +149,9 @@ class Parameters:
         parent_frame.columnconfigure(3, weight=1)
         
         ttk.Label(parent_frame, text="Genre").grid(row=0, column=0, padx=5, pady=5, sticky="w")
-        genre_dropdown = ttk.Combobox(parent_frame, textvariable=self.genre_var, values=["Sci-Fi", "Fantasy"], state="readonly")
+        # Get supported genres dynamically from genre handlers
+        supported_genres = get_supported_genres()
+        genre_dropdown = ttk.Combobox(parent_frame, textvariable=self.genre_var, values=supported_genres, state="readonly")
         genre_dropdown.grid(row=0, column=1, padx=5, pady=5, sticky="ew")
         
         ttk.Label(parent_frame, text="Subgenre").grid(row=0, column=2, padx=5, pady=5, sticky="w")
@@ -249,7 +252,37 @@ class Parameters:
         elif genre == "Fantasy":
             subgenres = (
                 "High Fantasy", "Dark Fantasy", "Urban Fantasy",
-                "Sword and Sorcery", "Mythic Fantasy"
+                "Sword and Sorcery", "Mythic Fantasy", "Fairy Tale"
+            )
+        elif genre == "Horror":
+            subgenres = (
+                "Gothic Horror", "Psychological Horror", "Supernatural Horror",
+                "Body Horror", "Cosmic Horror", "Slasher"
+            )
+        elif genre == "Mystery":
+            subgenres = (
+                "Cozy Mystery", "Hard-boiled Detective", "Police Procedural",
+                "Amateur Sleuth", "Legal Thriller", "Forensic Mystery"
+            )
+        elif genre == "Romance":
+            subgenres = (
+                "Contemporary Romance", "Historical Romance", "Paranormal Romance",
+                "Romantic Suspense", "Regency Romance", "Western Romance"
+            )
+        elif genre == "Thriller":
+            subgenres = (
+                "Espionage Thriller", "Psychological Thriller", "Action Thriller",
+                "Techno-Thriller", "Medical Thriller", "Legal Thriller"
+            )
+        elif genre == "Western":
+            subgenres = (
+                "Traditional Western", "Weird Western", "Space Western",
+                "Modern Western", "Outlaw Western", "Cattle Drive Western"
+            )
+        elif genre == "Historical Fiction":
+            subgenres = (
+                "Ancient History", "Medieval", "Renaissance",
+                "Colonial America", "Civil War Era", "World War Era"
             )
         else:
              subgenres = ()
@@ -354,11 +387,11 @@ class Parameters:
         # Resolve gender bias string to percentages
         selected_bias_string = self.gender_bias_var.get()
         # The map stores (female_%, male_%)
-        # The CharacterGenerator and SciFiGenerator will expect (male_percentage, female_percentage)
+        # The SciFiCharacterGenerator and FantasyCharacterGenerator will expect (male_percentage, female_percentage)
         # So we will flip them when retrieving if necessary, or store them as (male, female) in the map.
         # Let's assume the generators will expect (male_percentage, female_percentage)
         # And the map will provide (female_p, male_p) matching the F/M display order.
-        # So, when CharacterGenerator gets male_p and female_p, it will use them directly.
+        # So, when SciFiCharacterGenerator or FantasyCharacterGenerator gets male_p and female_p, it will use them directly.
         
         # Let's redefine GENDER_BIAS_MAP to store (male_percentage, female_percentage)
         # This makes downstream usage more direct.
