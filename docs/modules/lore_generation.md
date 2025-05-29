@@ -12,12 +12,11 @@ The `Lore` class handles the user interface for lore generation, orchestrates th
 *   **Input Fields** (within the "Story Parameters" `LabelFrame`):
     *   `num_factions_var`: `tk.StringVar` for the "Number of Factions" entry.
     *   `num_chars_var`: `tk.StringVar` for the "Number of Characters" entry.
-    *   `num_planets_var`: `tk.StringVar` for the "Number of Planets" entry (this field is conditionally visible based on subgenre).
+    *   `num_locations_var`: `tk.StringVar` for the "Number of Locations" entry (e.g., Planets for Sci-Fi, Cities for Fantasy). This field's visibility and label may change based on the selected genre.
     *   `extra_param_var`: `tk.StringVar` for an additional parameter whose label (`extra_param_label`) changes based on the subgenre (e.g., "Technological Focus:" for Cyberpunk).
 *   **Action Buttons**:
     *   `factions_button`: Triggers `generate_factions()`.
     *   `characters_button`: Triggers `generate_characters()`.
-    *   `planet_button`: Triggers `generate_planet_list()` (conditionally visible; currently a placeholder).
     *   `generate_lore_button`: Triggers `generate_lore()`, the main LLM-driven world-building function.
     *   `main_char_enh_button`: Triggers `main_character_enhancement()` to generate detailed backstories.
     *   `suggest_titles_button`: Triggers `suggest_titles()`.
@@ -36,41 +35,38 @@ The `Lore` class handles the user interface for lore generation, orchestrates th
 3.  **`update_extra_parameter(self)`**:
     *   This method is registered as a callback with `Parameters` and is called when parameters change.
     *   It first calls `update_genre_display()`.
-    *   Dynamically adjusts the UI based on the selected subgenre:
-        *   Hides the "Number of Planets" input and the "Generate Planet List" button if the subgenre is "Space Opera"; otherwise, ensures they are visible.
+    *   Dynamically adjusts the UI based on the selected genre and subgenre:
+        *   Updates the label and visibility of the "Number of Locations" input based on the current genre handler's requirements (e.g., some genres may not require a user-defined number of locations).
         *   Updates the label for `extra_param_label` and makes the `extra_param_frame` visible if the subgenre has a specific extra parameter (e.g., "Technological Focus:" for Cyberpunk); otherwise, hides it.
 
 4.  **`generate_factions(self)`**:
-    *   Retrieves `num_factions` from `num_factions_var` and `gender_bias_str` from `self.app.param_ui`.
-    *   Calls `Generators.SciFiGenerator.generate_universe()` to create a list of faction data (dictionaries).
-    *   Calls `Generators.SciFiGenerator.save_factions_to_file()` to save this data as `factions.json` in the output directory.
+    *   Retrieves `num_factions` from `num_factions_var`, `num_locations` from `num_locations_var` (if applicable for the genre), and `gender_bias_str` from `self.app.param_ui`.
+    *   Calls the `generate_factions()` method on the current genre's handler (e.g., `self.app.genre_handler.generate_factions(num_factions, num_locations)`).
+    *   The handler is responsible for generating faction data (and initial location data if applicable) and saving it (typically to `factions.json`).
 
 5.  **`generate_characters(self)`**:
     *   Retrieves `num_chars` from `num_chars_var` and `gender_bias_str` from `self.app.param_ui`.
     *   Calls `Generators.CharacterGenerator.generate_main_characters()` which returns a list of `Character` objects.
     *   Calls `Generators.CharacterGenerator.save_characters_to_file()` to serialize these objects and save them as `characters.json` in the output directory.
 
-6.  **`generate_planet_list(self)`**:
-    *   Currently a placeholder method that shows a "Not Implemented" message.
-
-7.  **`generate_lore(self)`**:
+6.  **`generate_lore(self)`**:
     *   This is a major LLM-driven function for comprehensive world-building.
     *   **Process**:
         1.  Loads basic story parameters from `parameters.txt`.
         2.  Loads character data from `characters.json` (extracting names and roles for summaries, and later full details).
-        3.  Loads faction data from `factions.json` (extracting names for summaries, and later capital details).
+        3.  Loads faction data from `factions.json`.
         4.  Constructs a multi-part prompt for the LLM:
             *   Initial instructions for generating foundational lore.
             *   Story parameters loaded.
             *   Summaries of characters and factions.
-            *   Detailed information about faction capitals (name, planet, system, population, climate, infrastructure).
+            *   Detailed information about key faction locations, retrieved via `self.app.genre_handler.get_location_info_from_factions(factions_data)`. The specifics of this information (e.g., capital planets for Sci-Fi, main cities for Fantasy) depend on the genre.
             *   Detailed information for each character (sorted by role: protagonist, deuteragonist, antagonist first), including gender, age, title, occupation, faction, homeworld, traits, and family details.
             *   Final instructions emphasizing consistency and not generating a story title.
         5.  Saves this comprehensive prompt to `prompts/main_lore_prompt.md` in the output directory.
         6.  Sends the prompt to the selected LLM (via `ai_helper.send_prompt`).
         7.  Saves the LLM's response (the generated world lore) to `generated_lore.md` in the output directory.
 
-8.  **`suggest_titles(self)`**:
+7.  **`suggest_titles(self)`**:
     *   Aims to generate potential story titles using the LLM.
     *   **Process**:
         1.  Loads the full content of `generated_lore.md`.
@@ -80,7 +76,7 @@ The `Lore` class handles the user interface for lore generation, orchestrates th
         5.  Sends the prompt to the LLM.
         6.  Saves the LLM's response (the list of suggested titles) to `suggested_titles.md`.
 
-9.  **`main_character_enhancement(self)`**:
+8.  **`main_character_enhancement(self)`**:
     *   Focuses on generating detailed backstories for main characters (Protagonist, Deuteragonist, Antagonist) using the LLM.
     *   **Process**:
         1.  Loads `generated_lore.md` for overall universe context.
@@ -124,5 +120,5 @@ The `lore.py` module reads from and writes to several files, all within the user
 
 *   Uses helper functions from `helper_fns.py` (e.g., `open_file`, `write_file`, `read_json`, `write_json`, `save_prompt_to_file`).
 *   Uses `ai_helper.send_prompt` for all LLM communications.
-*   Utilizes `Generators.SciFiGenerator` (specifically `generate_universe`, `save_factions_to_file`) for non-LLM faction generation.
+*   Utilizes the current genre's handler (obtained via `self.app.genre_handler`, an instance of a class from `Generators/GenreHandlers/`) for genre-specific faction and initial location generation.
 *   Utilizes `Generators.CharacterGenerator` (specifically `generate_main_characters`, `save_characters_to_file`) for non-LLM initial character generation. 

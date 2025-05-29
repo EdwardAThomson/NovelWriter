@@ -25,7 +25,7 @@ Click on the **"Novel Parameters"** tab to begin.
 
 **What you'll do:**
 - **Novel Title**: Enter the title of your story
-- **Genre**: Select "Science Fiction" (currently the only supported genre)
+- **Genre**: Select your desired genre (e.g., Science Fiction, Fantasy, Western, Mystery, Romance, Horror, Thriller, Historical Fiction)
 - **Subgenre**: Choose from options like Space Opera, Cyberpunk, Hard Science Fiction, etc.
 - **Tone**: Select the mood of your story (e.g., Dark, Optimistic, Gritty)
 - **Themes**: Pick themes you want to explore (e.g., Identity, Power, Survival)
@@ -43,12 +43,12 @@ Click on the **"Novel Parameters"** tab to begin.
 Click on the **"Generate Lore"** tab.
 
 **What happens here:**
-- The app creates factions, planets, and characters for your universe
+- The app creates factions, locations (e.g., planets for Sci-Fi, cities for Fantasy), and characters for your universe
 - Main characters (protagonist, deuteragonist, antagonist) are developed with backstories
 - The AI generates rich lore that ties everything together
 
 **What you'll do:**
-1. Click **"Generate Initial Data"** - this creates factions, planets, and characters
+1. Click **"Generate Initial Data"** - this creates factions, locations, and characters
 2. Click **"Generate Character Backstories"** - this adds depth to your main characters
 3. Click **"Generate Universe Lore"** - this creates the full background narrative
 

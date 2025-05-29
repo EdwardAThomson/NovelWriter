@@ -21,12 +21,12 @@ The application guides the user through a series of steps, typically correspondi
     *   Next, in the "Generate Lore" tab, the application assists in creating the foundational background for the story's universe.
     *   Based on the initial parameters (especially genre, subgenre, and any synopsis provided by the user if that feature is used), the LLM generates:
         *   Details about the setting's technology.
-        *   A list of major planets with brief descriptions.
+        *   A list of major locations (e.g., planets for Sci-Fi, cities for Fantasy) with brief descriptions.
         *   In-depth profiles for major factions, including their goals, resources, and interrelations.
         *   A roster of key characters, outlining their physical descriptions, personalities, motivations, goals, strengths, flaws, and summarized backstories.
         *   A summary of significant relationships between characters.
     *   This detailed information is saved into structured files, primarily:
-        *   `generated_lore.md`: Contains general world-building, technology, and planetary details.
+        *   `generated_lore.md`: Contains general world-building, technology, and genre-specific location details.
         *   `characters.json`: Stores character profiles in a structured format.
         *   `factions.json`: Stores faction profiles in a structured format.
 

@@ -12,7 +12,7 @@ The UI primarily consists of several buttons that trigger sequential generation 
 
 *   **"Generate Character Arcs" Button**: Calls `generate_arcs()`.
 *   **"Generate Faction Arcs" Button**: Calls `generate_faction_arcs()`. This method internally performs two steps: first generating faction-specific arcs and then reconciling them with the previously generated character arcs.
-*   **"Add Planets to Arcs" Button**: Calls `add_planets_to_arcs()` to integrate location details into the reconciled arcs.
+*   **"Add Locations to Arcs" Button**: Calls `add_locations_to_arcs()` to integrate location details into the reconciled arcs.
 *   **Main Plot Generation Button** (`detailed_plot_button`):
     *   The text of this button is dynamic, changing based on the "Story Length" selected in the Parameters tab (e.g., "Outline Short Story Plot", "Create Detailed Act/Section Plots"). This is managed by `_update_detailed_plot_button_text()`.
     *   Its command is `_dispatch_detailed_plot_creation()`, which routes to the appropriate detailed plotting method.
@@ -63,27 +63,28 @@ The UI primarily consists of several buttons that trigger sequential generation 
             *   Saves this prompt to `prompts/arc_reconciliation_prompt.md`.
     *   **Output**: Saves the LLM's response (the unified arc) to `reconciled_arcs.md`.
 
-6.  **`add_planets_to_arcs(self)`**:
-    *   **Purpose**: Integrates specific planetary locations into the reconciled story arc.
+6.  **`add_locations_to_arcs(self)`**:
+    *   **Purpose**: Integrates specific locations (genre-dependent, e.g., planets, cities) into the reconciled story arc.
     *   **Inputs**:
         *   `reconciled_arcs.md`: The unified character and faction arcs.
-        *   `factions.json`: To extract a list of key planets and their controlling factions.
+        *   `factions.json`: To extract a list of key locations and their controlling factions. The type of location information extracted (e.g., planets from Sci-Fi factions, cities from Fantasy factions) depends on the genre handler.
+        *   The current genre handler (`self.app.genre_handler`) to get the location type name and assist in extracting relevant location data.
     *   **Process**:
-        1.  Constructs a prompt asking the LLM to rewrite the `reconciled_arcs.md`, weaving in appropriate planet locations from the extracted list, ensuring logical alignment with faction control.
-        2.  Saves this prompt to `prompts/add_planets_to_arcs_prompt.md`.
-    *   **Output**: Saves the LLM's response (arc with locations) to `reconciled_planets_arcs.md`.
+        1.  Constructs a prompt asking the LLM to rewrite the `reconciled_arcs.md`, weaving in appropriate locations (obtained via the genre handler's `get_location_info_from_factions()` method and using the `get_location_type_name()` for appropriate wording in the prompt), ensuring logical alignment with faction control and story progression.
+        2.  Saves this prompt to `prompts/add_locations_to_arcs_prompt.md`.
+    *   **Output**: Saves the LLM's response (arc with locations) to `reconciled_locations_arcs.md`.
 
 7.  **`improve_structure(self)`** (for Novella, Novel, Epic):
-    *   **Purpose**: To take the high-level `reconciled_planets_arcs.md` and generate more detailed plot summaries for each major act or section of the chosen story structure.
+    *   **Purpose**: To take the high-level `reconciled_locations_arcs.md` and generate more detailed plot summaries for each major act or section of the chosen story structure.
     *   **Inputs**:
         *   `parameters.txt`: For the selected `Story Structure` (e.g., "6-Act Structure") and `Story Length`.
-        *   `reconciled_planets_arcs.md`: The overall story arc with locations.
+        *   `reconciled_locations_arcs.md`: The overall story arc with locations.
         *   `STRUCTURE_SECTIONS_MAP` (from `parameters.py`): To get the list of sections/acts for the chosen structure (e.g., "Beginning", "Rising Action", ... for 6-Act Structure).
     *   **Process**:
         1.  Iterates through each section/act defined in `STRUCTURE_SECTIONS_MAP` for the selected structure.
         2.  In each iteration:
             *   Constructs a prompt asking the LLM to provide a detailed summary for the *current section/act*.
-            *   The prompt includes the full `reconciled_planets_arcs.md` as overall context.
+            *   The prompt includes the full `reconciled_locations_arcs.md` as overall context.
             *   Crucially, it also includes the detailed summary generated for the *immediately preceding section/act* (from the previous iteration) to ensure logical flow and continuity.
             *   A specific instruction is added if the `Story Length` is "Novella" to aim for conciseness appropriate for that length.
             *   Saves this prompt to `prompts/improve_structure_[structure_name]_[section_name]_prompt.md`.
@@ -97,7 +98,7 @@ The UI primarily consists of several buttons that trigger sequential generation 
         *   `STRUCTURE_SECTIONS_MAP` (from `parameters.py`): To get the stages of the selected structure.
         *   Contextual files (loaded if available):
             *   `generated_lore.md`
-            *   `reconciled_planets_arcs.md` (though its relevance for a short story might be less direct than for novels, it can provide thematic context).
+            *   `reconciled_locations_arcs.md` (though its relevance for a short story might be less direct than for novels, it can provide thematic context).
             *   `characters.json` (for a brief summary of key characters).
             *   `factions.json` (for a brief summary of key factions).
     *   **Process**:
@@ -116,19 +117,19 @@ The `story_structure.py` module is central to plot development and interacts wit
 *   `parameters.txt`: For selected `Story Structure`, `Story Length`, `novel_title`.
 *   `generated_lore.md`: General world context.
 *   `characters.json`: For character details and roles.
-*   `factions.json`: For faction details and planet associations.
+*   `factions.json`: For faction details and genre-specific location associations (e.g., planets for Sci-Fi, cities for Fantasy).
 *   `background_[role]_[name].md` files: Individual backstories for main characters.
 *   `character_arcs.md`: Generated character progression.
 *   `faction_arcs.md`: Generated faction progression (intermediate file).
 *   `reconciled_arcs.md`: Unified character and faction arcs (intermediate file).
-*   `reconciled_planets_arcs.md`: Unified arcs with location data; serves as the main input for `improve_structure`.
+*   `reconciled_locations_arcs.md`: Unified arcs with location data; serves as the main input for `improve_structure`.
 
 **Output Files (Write):**
 
 *   `character_arcs.md`
 *   `faction_arcs.md`
 *   `reconciled_arcs.md`
-*   `reconciled_planets_arcs.md`
+*   `reconciled_locations_arcs.md`
 *   **For Long-Form Works**: Individual detailed plot files for each act/section (e.g., `6-act_structure_beginning.md`, `novel_standard_6-act_structure_rising_action.md`). The exact naming convention might vary but follows `[structure]_[section].md`.
 *   **For Short Stories**: `plot_short_story_[structure_name].md`.
 *   **Prompt Log Files**: Numerous prompt files are saved to the `prompts/` subdirectory, corresponding to each major LLM call (e.g., `character_arc_prompt.md`, `faction_arc_generation_prompt.md`, `improve_structure_*.md`, `outline_short_story_plot_*.md`).

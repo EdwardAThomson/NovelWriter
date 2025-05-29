@@ -96,7 +96,7 @@ Here are greater details of the generation process. Please note that the generat
 1. Collect parameters, generate high-level outline: briefly outline the setting, major technologies, major factions, the major conflict in the story, plus the key themes.
 2. Generate Universe Background:
     1. Generate background details about the technology of the setting.
-    2. Generate a list of major planets.
+    2. Generate a list of major locations (originally planets, now genre-dependent).
     3. Generate more details for the factions. This goes beyond what is created by the first prompt.
     4. Generate a list of characters. This outlines their goals and motivations, but is a bit light in detail.
     5. Improve Character Details.

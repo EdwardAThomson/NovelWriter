@@ -26,12 +26,7 @@ This documentation is organized into the following main sections (more may be ad
     *   Instructions on how to use the application's graphical user interface, tab by tab.
     *   Tips for getting the best results.
 
-5.  **[Developer Guide (For Contributors)](./developer_guide/README.md)**
-    *   Information on setting up the development environment.
-    *   Coding conventions and project structure.
-    *   Guidelines for contributing to the project.
-
-6.  **[Developer Diary & Design Notes](./discussion.md)**
+5.  **[Developer Diary & Design Notes](./discussion.md)**
     *   Ongoing thoughts, design rationale, LLM experimentation notes, and project history.
 
 ## How to Use This Documentation
