@@ -5,6 +5,7 @@
 NovelWriter is a comprehensive Python application designed to assist authors in writing novels and short stories across **multiple genres** by leveraging Large Language Models (LLMs). It provides a GUI-based interface built with Tkinter for managing novel parameters, generating universe lore, outlining story structure, planning scenes, and writing chapter prose.
 
 **🎯 Supported Genres:**
+
 - **Sci-Fi** (Space Opera, Hard Sci-Fi, Cyberpunk, Time Travel, Post-Apocalyptic, Biopunk)
 - **Fantasy** (High Fantasy, Dark Fantasy, Urban Fantasy, Sword and Sorcery, Mythic Fantasy, Fairy Tale)
 - **Historical Fiction** (Ancient History, Medieval, Renaissance, Colonial America, Civil War Era, World War Era)
@@ -15,6 +16,8 @@ NovelWriter is a comprehensive Python application designed to assist authors in 
 - **Western** (Traditional Western, Weird Western, Space Western, Modern Western, Outlaw Western, Cattle Drive Western)
 
 Each genre features specialized faction generation, character creation, and world-building tailored to genre conventions and tropes.
+
+![Screenshot of NovelWriter](./screenshots/screenshot.png)
 
 The application features a dynamic LLM model selector, allowing users to choose from various supported models for different generation tasks. Currently configured models include:
 
