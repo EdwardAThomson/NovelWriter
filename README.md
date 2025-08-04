@@ -2,7 +2,7 @@
 
 ## Description
 
-NovelWriter is a comprehensive Python application designed to assist authors in writing novels and short stories across **multiple genres** by leveraging Large Language Models (LLMs). It provides a GUI-based interface built with Tkinter for managing novel parameters, generating universe lore, outlining story structure, planning scenes, and writing chapter prose.
+NovelWriter is a comprehensive Python application designed to assist authors in writing novels and short stories across **multiple genres** by leveraging Large Language Models (LLMs). It provides a GUI-based interface built with Tkinter for managing novel parameters, generating universe lore, outlining story structure, planning scenes, and writing chapter prose. The application now features an advanced agentic framework with multi-agent orchestration and a multi-level review system for quality control.
 
 **🎯 Supported Genres:**
 
@@ -40,6 +40,10 @@ While many steps are automated, the output often serves as a strong starting poi
 - **Comprehensive Character Arcs**: Detailed character development with goals, motivations, flaws, and growth arcs
 - **Story Arc Integration**: Seamless integration between character arcs, faction politics, and location-based storytelling
 - **Flexible Output Formats**: Generate complete manuscripts with proper chapter organization
+- **Agentic Framework**: True agentic behavior with multi-agent orchestration and tool selection
+- **Multi-Level Review System**: Scene, chapter, and batch-level quality analysis with trend tracking
+- **Automated Chapter Writing**: Complete automation of chapter writing with quality control
+- **Quality Analytics**: Advanced quality trend analysis with configurable thresholds and dashboards
 
 ## Quick Start
 
@@ -176,12 +180,15 @@ The novel generation process follows these main stages through the UI tabs:
     *   Generate chapter outlines based on chosen story structure
     *   Create detailed scene plans with character interactions and plot progression
 
-5.  **Write Chapters (`chapter_writing.py`):**
+5.  **Write Chapters (`agents/writing/chapter_writing_agent.py`):**
     *   Generate prose for each scene using comprehensive context
     *   Maintain genre consistency and character voice
     *   Provide functionality to re-write and improve chapters
+    *   Perform multi-level quality reviews (scene, chapter, batch)
+    *   Track quality trends and improvements over time
+    *   Apply configurable quality thresholds with retry logic
 
-More details, project history, and ongoing developer insights can be found in our [Developer Diary & Design Notes](./docs/discussion.md).
+More details, project history, and ongoing developer insights can be found in our [Developer Diary & Design Notes](./docs/dev_log.md) and [Agentic Implementation Guide](./docs/agentic_implementation.md).
 
 ## 📈 Technical Architecture
 
@@ -192,6 +199,36 @@ NovelWriter uses a modular architecture with:
 - **Character Generators**: Genre-specific character creation with appropriate attributes
 - **Faction Systems**: Organizational structures tailored to each genre's conventions
 - **Story Integration**: Seamless connection between world-building and narrative structure
+- **Agentic Framework**: Extensible agent system with base classes and specialized implementations
+- **Multi-Agent Orchestration**: Coordination between quality, consistency, and writing agents
+- **Tool Registry**: Discoverable and self-describing tools for agent use
+- **Quality Analytics**: Comprehensive quality tracking and trend analysis
+
+### Directory Structure
+
+The application follows a clean, modular directory structure:
+
+```
+NovelWriter/
+├── agents/                  # Agentic framework components
+│   ├── base/               # Base agent and tool classes
+│   ├── consistency/        # Consistency checking agents
+│   ├── orchestration/      # Multi-agent orchestrators
+│   ├── quality/            # Quality control agents
+│   ├── review/             # Review analysis agents
+│   └── writing/            # Chapter writing agents
+├── core/                   # Core application functionality
+│   ├── config/             # Configuration and settings
+│   ├── generation/         # Content generation helpers
+│   ├── gui/                # User interface components
+│   └── utils/              # Utility functions
+├── current_work/           # Working directory for story content
+│   ├── story/              # Story content (lore, structure, etc.)
+│   ├── quality/            # Quality analysis data
+│   ├── system/             # System files (logs, prompts, etc.)
+│   └── archive/            # Archived content
+└── docs/                   # Documentation
+```
 
 ### Original Version
 
