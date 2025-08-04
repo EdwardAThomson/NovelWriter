@@ -157,36 +157,63 @@ Located in the root directory, this script is used to combine all generated chap
 
 ## 🚀 The Generation Process
 
-The novel generation process follows these main stages through the UI tabs:
+NovelWriter offers two complementary approaches to story generation:
 
-1.  **Novel Parameters (`parameters.py`):** Select genre, subgenre, story length, structure, and configure gender balance. Genre-specific configuration tabs provide tailored options for each genre.
+### Traditional GUI-Based Workflow
 
-2.  **Generate Lore (`lore.py` & Supporting Modules):**
-    *   Generate genre-appropriate factions/organizations using specialized generators
-    *   Generate characters with genre-specific attributes and relationships
-    *   Enhance main characters with detailed backgrounds, family trees, and faction affiliations
-    *   Generate narrative backstories using LLMs with genre-appropriate context
-    *   Compile comprehensive lore prompts including world-building details
-    *   Generate the main universe lore narrative
+The step-by-step approach using the UI tabs:
 
-3.  **Story Structure (`story_structure.py`):**
-    *   Generate Character Arcs based on genre conventions and backstories
-    *   Generate Faction Arcs incorporating political dynamics and conflicts
-    *   Reconcile Character and Faction Arcs with location-based storytelling
-    *   Generate high-level story structure using configurable frameworks
-    *   Refine each act/section with detailed plot development
+1.  **Novel Parameters (`core/gui/parameters.py`):** 
+    * Select genre, subgenre, story length, structure
+    * Configure gender balance and genre-specific options
+    * Set up basic story parameters manually
 
-4.  **Scene Planning (`scene_plan.py`):**
-    *   Generate chapter outlines based on chosen story structure
-    *   Create detailed scene plans with character interactions and plot progression
+2.  **Generate Lore (`core/gui/lore.py`):**
+    * Generate factions/organizations with specialized generators
+    * Create characters with detailed backgrounds and relationships
+    * Build comprehensive world-building elements
+    * Generate narrative backstories with genre-appropriate context
 
-5.  **Write Chapters (`agents/writing/chapter_writing_agent.py`):**
-    *   Generate prose for each scene using comprehensive context
-    *   Maintain genre consistency and character voice
-    *   Provide functionality to re-write and improve chapters
-    *   Perform multi-level quality reviews (scene, chapter, batch)
-    *   Track quality trends and improvements over time
-    *   Apply configurable quality thresholds with retry logic
+3.  **Story Structure (`core/gui/story_structure.py`):**
+    * Create character and faction arcs
+    * Generate high-level story structure using selected framework
+    * Develop detailed plot outlines for each act/section
+
+4.  **Scene Planning (`core/gui/scene_plan.py`):**
+    * Generate chapter outlines based on story structure
+    * Create detailed scene plans with character interactions
+
+5.  **Write Chapters (`core/gui/chapter_writing.py`):**
+    * Generate prose for each scene manually
+    * Review and improve chapters individually
+
+### Agentic Orchestrated Workflow
+
+The fully automated approach using the agentic framework:
+
+1.  **Story Generation Orchestrator (`agents/orchestration/story_generation_orchestrator.py`):**
+    * Coordinates the entire story generation process
+    * Manages workflow between specialized agents
+    * Handles decision-making and quality control
+
+2.  **Consistency Agent (`agents/consistency/consistency_agent.py`):**
+    * Ensures character and world-building consistency
+    * Tracks plot threads and narrative elements
+    * Validates story against established lore
+
+3.  **Quality Control Agent (`agents/quality/quality_agent.py`):**
+    * Analyzes content for coherence, pacing, and prose quality
+    * Provides improvement recommendations
+    * Ensures quality standards are maintained
+
+4.  **Chapter Writing Agent (`agents/writing/chapter_writing_agent.py`):**
+    * Automates chapter writing with scene-by-scene generation
+    * Performs multi-level quality reviews:
+      * Scene-level: Quality, word count, issues, strengths
+      * Chapter-level: Coherence, pacing, character development
+      * Batch-level: Consistency, progression, style
+    * Tracks quality trends and applies retry logic
+    * Generates quality dashboards with detailed metrics
 
 More details, project history, and ongoing developer insights can be found in our [Developer Diary & Design Notes](./docs/dev_log.md) and [Agentic Implementation Guide](./docs/agentic_implementation.md).
 
