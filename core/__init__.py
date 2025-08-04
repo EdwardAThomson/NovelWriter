@@ -1,0 +1,1 @@
+"""NovelWriter core functionality package."""
