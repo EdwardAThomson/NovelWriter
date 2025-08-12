@@ -460,24 +460,40 @@ class Parameters:
             if value or isinstance(value, bool):
                  output_lines.append(f"{key_display}: {value}")
 
-        # Use the configured output directory to save the parameters file itself!
+        # Use the configured output directory with new structured layout
         output_dir = params.get("output_directory", "current_work") # Get configured dir
-        os.makedirs(output_dir, exist_ok=True) # Ensure it exists
-        filepath = os.path.join(output_dir, "parameters.txt") # Save params IN the target dir
+        system_dir = os.path.join(output_dir, "system") # Create system subdirectory
+        os.makedirs(system_dir, exist_ok=True) # Ensure system directory exists
+        filepath = os.path.join(system_dir, "parameters.txt") # Save params in system dir
 
         try:
             write_file(filepath, "\n".join(output_lines))
             self.logger.info(f"Parameters saved to {filepath}")
-            show_success("Success", f"Parameters saved to {filepath}")
+            # show_success("Success", f"Parameters saved to {filepath}")
         except Exception as e:
             show_error("Error", f"Failed to save parameters: {e}")
             self.logger.error(f"Error saving parameters to {filepath}: {e}", exc_info=True)
 
     def load_parameters(self):
-        # Default path to check for the parameters file initially
-        # We check default first, then potentially update based on loaded value
+        # Check for parameters file in new structured directory first, then fall back to old location
         default_dir = "current_work"
-        filepath = os.path.join(default_dir, "parameters.txt")
+        
+        # Option 1: New structured path
+        structured_filepath = os.path.join(default_dir, "system", "parameters.txt")
+        # Option 2: Old flat path (fallback)
+        flat_filepath = os.path.join(default_dir, "parameters.txt")
+        
+        # Determine which file to use
+        if os.path.exists(structured_filepath):
+            filepath = structured_filepath
+            self.logger.info(f"Loading parameters from structured path: {filepath}")
+        elif os.path.exists(flat_filepath):
+            filepath = flat_filepath
+            self.logger.info(f"Loading parameters from legacy path: {filepath}")
+        else:
+            # No parameters file found, use defaults
+            filepath = structured_filepath  # Will be created here when saved
+            self.logger.info(f"No parameters file found, will use defaults and save to: {filepath}")
 
         loaded_params = {}
         if os.path.exists(filepath):

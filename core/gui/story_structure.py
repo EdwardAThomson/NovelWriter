@@ -13,6 +13,13 @@ class StoryStructure:
     def __init__(self, parent, app):
         self.parent = parent
         self.app = app  # Store the app instance
+        
+        # Initialize directory manager for structured file paths
+        from core.config.directory_config import get_directory_manager
+        self.dir_manager = get_directory_manager(
+            output_dir=app.get_output_dir() if hasattr(app, 'get_output_dir') else 'current_work',
+            use_new_structure=True
+        )
 
         # Frame setup for story structure UI
         self.story_structure_frame = ttk.Frame(parent)
@@ -142,9 +149,9 @@ class StoryStructure:
         os.makedirs(output_dir, exist_ok=True)
         self.app.logger.info(f"Generating Character Arcs using model: {selected_model}, output_dir: {output_dir}")
         
-        lore_file_path = os.path.join(output_dir, "generated_lore.md")
-        characters_json_path = os.path.join(output_dir, "characters.json") # Path to characters.json
-        output_file_path = os.path.join(output_dir, "character_arcs.md")
+        lore_file_path = os.path.join(output_dir, "story", "lore", "generated_lore.md")
+        characters_json_path = os.path.join(output_dir, "story", "lore", "characters.json") # Path to characters.json
+        output_file_path = os.path.join(output_dir, "story", "structure", "character_arcs.md")
         
         # --- Dynamically determine backstory file paths --- 
         main_character_names_by_role = {
@@ -212,13 +219,14 @@ class StoryStructure:
             show_error("Error", f"Error parsing characters file: {characters_json_path}")
             return
         
-        # Construct dynamic background file paths
+        # Construct dynamic background file paths (use structured directory layout)
         background_files_paths = {}
         for role, char_file_name_part in main_character_names_by_role.items():
             if char_file_name_part:
                 # Filename format from lore.py: background_{role}_{name_part}.md
                 filename = f"background_{role}_{char_file_name_part}.md"
-                background_files_paths[role] = os.path.join(output_dir, filename)
+                # Use structured directory: story/lore/ instead of flat structure
+                background_files_paths[role] = os.path.join(output_dir, "story", "lore", filename)
             else:
                 self.app.logger.warning(f"Could not find character name for role: {role} in characters.json. Cannot load their backstory.")
         
@@ -313,7 +321,7 @@ class StoryStructure:
             # Save the response
             write_file(output_file_path, response)
             self.app.logger.info(f"Character arcs saved successfully to {output_file_path}")
-            show_success("Success", f"Character arcs generated and saved to {output_file_path}")
+            # show_success("Success", f"Character arcs generated and saved to {output_file_path}")
 
         except Exception as e:
             self.app.logger.error(f"Failed to generate character arcs: {e}", exc_info=True)
@@ -329,12 +337,12 @@ class StoryStructure:
         self.app.logger.info(f"Faction Arc Generation & Reconciliation started. Model: {selected_model}, Output Dir: {output_dir}")
 
         # Define file paths consistently using output_dir
-        parameters_file_path = os.path.join(output_dir, "parameters.txt")
-        character_arcs_file_path = os.path.join(output_dir, "character_arcs.md")
-        factions_json_file_path = os.path.join(output_dir, "factions.json")
-        lore_file_path = os.path.join(output_dir, "generated_lore.md")
-        faction_arcs_output_file_path = os.path.join(output_dir, "faction_arcs.md")
-        reconciled_output_file_path = os.path.join(output_dir, "reconciled_arcs.md")
+        parameters_file_path = os.path.join(output_dir, "system", "parameters.txt")
+        character_arcs_file_path = os.path.join(output_dir, "story", "structure", "character_arcs.md")
+        factions_json_file_path = os.path.join(output_dir, "story", "lore", "factions.json")
+        lore_file_path = os.path.join(output_dir, "story", "lore", "generated_lore.md")
+        faction_arcs_output_file_path = os.path.join(output_dir, "story", "structure", "faction_arcs.md")
+        reconciled_output_file_path = os.path.join(output_dir, "story", "structure", "reconciled_arcs.md")
         
         try:
             # --- Read Parameters to get selected structure --- 
@@ -504,7 +512,7 @@ class StoryStructure:
             # Save the reconciled arcs
             write_file(reconciled_output_file_path, reconciled_response)
             self.app.logger.info(f"Reconciled story arcs content saved to {reconciled_output_file_path}")
-            show_success("Success", f"Faction arcs generated and reconciled arcs saved to {reconciled_output_file_path}")
+            # show_success("Success", f"Faction arcs generated and reconciled arcs saved to {reconciled_output_file_path}")
 
         except FileNotFoundError as fnf_e:
             self.app.logger.error(f"File not found during faction arc generation/reconciliation: {fnf_e}", exc_info=True)
@@ -538,9 +546,9 @@ class StoryStructure:
         self.app.logger.info(f"Adding {location_type_name} to Arcs. Model: {selected_model}, Output Dir: {output_dir}")
         
         # Define file paths
-        reconciled_arcs_file_path = os.path.join(output_dir, "reconciled_arcs.md")
-        factions_json_file_path = os.path.join(output_dir, "factions.json")
-        output_file_path = os.path.join(output_dir, "reconciled_locations_arcs.md")
+        reconciled_arcs_file_path = os.path.join(output_dir, "story", "structure", "reconciled_arcs.md")
+        factions_json_file_path = os.path.join(output_dir, "story", "lore", "factions.json")
+        output_file_path = os.path.join(output_dir, "story", "planning", "reconciled_locations_arcs.md")
         
         try:
             # Load the reconciled arcs
@@ -640,7 +648,7 @@ class StoryStructure:
             # Save the response
             write_file(output_file_path, response)
             self.app.logger.info(f"Story arc with {location_type_name.lower()} saved to {output_file_path}")
-            show_success("Success", f"Added {location_type_name.lower()}. Result saved to {output_file_path}")
+            # show_success("Success", f"Added {location_type_name.lower()}. Result saved to {output_file_path}")
 
         except FileNotFoundError as fnf_e:
             self.app.logger.error(f"File not found during add_locations_to_arcs: {fnf_e}", exc_info=True)
@@ -812,9 +820,12 @@ class StoryStructure:
 
         try:
             # Try the new generic filename first, fall back to old filename for backward compatibility
-            story_structure_path = os.path.join(output_dir, "reconciled_locations_arcs.md")
+            story_structure_path = os.path.join(output_dir, "story", "planning", "reconciled_locations_arcs.md")
             if not os.path.exists(story_structure_path):
-                story_structure_path = os.path.join(output_dir, "reconciled_planets_arcs.md")
+                # Try legacy flat structure locations for backward compatibility
+                story_structure_path = os.path.join(output_dir, "reconciled_locations_arcs.md")
+                if not os.path.exists(story_structure_path):
+                    story_structure_path = os.path.join(output_dir, "reconciled_planets_arcs.md")
             story_structure_content = open_file(story_structure_path)
             
             
@@ -876,7 +887,7 @@ class StoryStructure:
                 
                 safe_section_name_for_output = current_section_name_for_prompt.lower().replace(' ', '_').replace(':','').replace('/','_')
                 output_filename_base = f"{selected_structure_name.lower().replace(' ', '_')}_{safe_section_name_for_output}.md"
-                output_filename_full_path = os.path.join(output_dir, output_filename_base)
+                output_filename_full_path = os.path.join(output_dir, "story", "structure", output_filename_base)
                 write_file(output_filename_full_path, response)
                 self.app.logger.info(f"Saved details for section '{current_section_name_for_prompt}' to {output_filename_full_path}")
 
@@ -885,7 +896,7 @@ class StoryStructure:
                 previous_section_name_for_prompt = current_section_name_for_prompt
 
             self.app.logger.info("Story structure improvement process complete!")
-            show_success("Success", f"Detailed sections for '{selected_structure_name}' generated.")
+            # show_success("Success", f"Detailed sections for '{selected_structure_name}' generated.")
 
         except FileNotFoundError as fnf_e:
             show_error("Error", f"File not found during structure improvement: {fnf_e}")
@@ -933,7 +944,7 @@ class StoryStructure:
         factions_summary = "No faction overview available."
 
         try:
-            lore_path = os.path.join(output_dir, "generated_lore.md")
+            lore_path = os.path.join(output_dir, "story", "lore", "generated_lore.md")
             if os.path.exists(lore_path):
                 lore_content = open_file(lore_path)
                 self.app.logger.info(f"Loaded lore from {lore_path}")
@@ -942,9 +953,12 @@ class StoryStructure:
 
         try:
             # Try the new generic filename first, fall back to old filename for backward compatibility
-            arcs_path = os.path.join(output_dir, "reconciled_locations_arcs.md")
+            arcs_path = os.path.join(output_dir, "story", "planning", "reconciled_locations_arcs.md")
             if not os.path.exists(arcs_path):
-                arcs_path = os.path.join(output_dir, "reconciled_planets_arcs.md")
+                # Try legacy flat structure locations for backward compatibility
+                arcs_path = os.path.join(output_dir, "reconciled_locations_arcs.md")
+                if not os.path.exists(arcs_path):
+                    arcs_path = os.path.join(output_dir, "reconciled_planets_arcs.md")
             if os.path.exists(arcs_path):
                 reconciled_arcs_content = open_file(arcs_path)
                 self.app.logger.info(f"Loaded reconciled arcs from {arcs_path}")
@@ -953,7 +967,7 @@ class StoryStructure:
         
         # Basic character and faction summaries (can be expanded)
         try:
-            char_json_path = os.path.join(output_dir, "characters.json")
+            char_json_path = os.path.join(output_dir, "story", "lore", "characters.json")
             if os.path.exists(char_json_path):
                 char_data = read_json(char_json_path)
                 if char_data and "characters" in char_data:
@@ -964,7 +978,7 @@ class StoryStructure:
             self.app.logger.warning(f"Could not load characters.json for summary: {e}")
 
         try:
-            faction_json_path = os.path.join(output_dir, "factions.json")
+            faction_json_path = os.path.join(output_dir, "story", "lore", "factions.json")
             if os.path.exists(faction_json_path):
                 faction_data = read_json(faction_json_path) # Assuming read_json returns list of dicts
                 if faction_data: # Check if faction_data is not None or empty
@@ -1026,12 +1040,12 @@ class StoryStructure:
         self.app.logger.info(f"Received short story plot from LLM. Length: {len(response)} chars.")
         
         output_filename_base = f"plot_short_story_{safe_structure_name_for_file}.md"
-        output_filename_full_path = os.path.join(output_dir, output_filename_base)
+        output_filename_full_path = os.path.join(output_dir, "story", "structure", output_filename_base)
         
         try:
             write_file(output_filename_full_path, response)
             self.app.logger.info(f"Short story plot saved successfully to {output_filename_full_path}")
-            show_success("Success", f"Short story plot generated and saved to {output_filename_full_path}")
+            # show_success("Success", f"Short story plot generated and saved to {output_filename_full_path}")
         except Exception as e:
             self.app.logger.error(f"Error saving short story plot to {output_filename_full_path}: {e}", exc_info=True)
             show_error("Error", f"Failed to save short story plot: {e}")

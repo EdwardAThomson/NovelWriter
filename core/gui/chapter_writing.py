@@ -154,7 +154,7 @@ class ChapterWriting:
             # 1. Determine and Read Input File (scene plan for the short story)
             safe_structure_name = selected_structure_name.lower().replace(' ', '_').replace(':', '').replace('/', '_')
             scene_plan_filename = f"scenes_short_story_{safe_structure_name}.md"
-            scene_plan_filepath = os.path.join(output_dir, scene_plan_filename)
+            scene_plan_filepath = os.path.join(output_dir, "story", "planning", scene_plan_filename)
 
             self.app.logger.info(f"Attempting to load scene plan from: {scene_plan_filepath}")
             try:
@@ -240,7 +240,7 @@ class ChapterWriting:
             # --- Load Contextual Information (Lore, Characters, Factions) ---
             lore_content = "Lore context is missing or not loaded."
             try:
-                lore_path = os.path.join(output_dir, "generated_lore.md")
+                lore_path = os.path.join(output_dir, "story", "lore", "generated_lore.md")
                 if os.path.exists(lore_path):
                     lore_content = open_file(lore_path)
                     self.app.logger.info(f"Loaded lore context from {lore_path}")
@@ -274,10 +274,10 @@ class ChapterWriting:
                             self.app.logger.info(f"Loaded and summarized character roster from {characters_json_path}")
             except Exception as e:
                 self.app.logger.warning(f"Could not load or process character roster from {characters_json_path}: {e}", exc_info=True)
-
+            # --- Load Faction Summary ---
             faction_summary_info = "Faction information not available."
             try:
-                factions_json_path = os.path.join(output_dir, "factions.json")
+                factions_json_path = os.path.join(output_dir, "story", "lore", "factions.json")
                 if os.path.exists(factions_json_path):
                     factions_data = read_json(factions_json_path) # Assuming read_json is from helper_fns
                     if factions_data: # Assuming factions_data is a list of faction dicts
@@ -362,12 +362,13 @@ class ChapterWriting:
 
             safe_title = novel_title.lower().replace(' ', '_').replace(':', '').replace('/', '')
             output_story_filename = f"prose_short_story_{safe_title}.md"
-            output_story_filepath = os.path.join(output_dir, output_story_filename)
+            os.makedirs(os.path.join(output_dir, "story", "content"), exist_ok=True)
+            output_story_filepath = os.path.join(output_dir, "story", "content", output_story_filename)
 
             try:
                 write_file(output_story_filepath, full_story_content)
                 self.app.logger.info(f"Short story prose successfully written to: {output_story_filepath}")
-                show_success("Success", f"Short story prose generated and saved to {output_story_filename}")
+                # show_success("Success", f"Short story prose generated and saved to {output_story_filename}")
             except Exception as e_write:
                 self.app.logger.error(f"Error writing full short story to file '{output_story_filepath}': {e_write}", exc_info=True)
                 show_error("Error", f"Failed to save the complete short story: {e_write}")
@@ -395,7 +396,7 @@ class ChapterWriting:
             self.app.logger.info(f"Target chapter (global): {target_chapter_number_global}")
 
             # 1. Access Core Parameters (Structure and Length)
-            parameters_file_path = os.path.join(output_dir, "parameters.txt")
+            parameters_file_path = os.path.join(output_dir, "system", "parameters.txt")
             selected_structure_name = "6-Act Structure" # Default
             story_length = "Novel (Standard)" # Default
             params_from_file = {}
@@ -437,7 +438,7 @@ class ChapterWriting:
                 
                 # This is the file that tells us how many chapters are in THIS section
                 chapter_outline_input_base = f"chapter_outlines_{safe_struct_name}_{safe_sect_name_iter}.md"
-                chapter_outline_input_filepath = os.path.join(output_dir, chapter_outline_input_base)
+                chapter_outline_input_filepath = os.path.join(output_dir, "story", "planning", chapter_outline_input_base)
                 self.app.logger.debug(f"Checking chapter outline: {chapter_outline_input_filepath}")
 
                 try:
@@ -474,7 +475,7 @@ class ChapterWriting:
             
             # The filename uses the global chapter number
             scene_plan_filename_base = f"scenes_{safe_selected_structure_name_for_file}_{safe_current_section_name_for_file}_ch{target_chapter_number_global}.md"
-            scene_plan_filepath = os.path.join(output_dir, scene_plans_subdir_name, scene_plan_filename_base)
+            scene_plan_filepath = os.path.join(output_dir, "story", "planning", scene_plans_subdir_name, scene_plan_filename_base)
             self.app.logger.info(f"Attempting to load scene plan for Chapter {target_chapter_number_global} from: {scene_plan_filepath}")
 
             # 4. Read the Scene File
@@ -495,7 +496,7 @@ class ChapterWriting:
 
             # --- Original logic from here, using scenes_content_for_chapter --- 
             # params = open_file("parameters.txt") # Already loaded as params_from_file
-            lore_content = open_file(os.path.join(output_dir, "generated_lore.md"))
+            # lore_content = open_file(os.path.join(output_dir, "story", "lore", "generated_lore.md"))
             # characters_content = open_file("characters.md") # Not used, character roster comes from JSON below
             # en_characters_content = open_file("characters.md") # Duplicate
             # relationships_content = open_file("relationships.md") # Not used
@@ -538,10 +539,10 @@ class ChapterWriting:
             
             self.app.logger.info(f"Successfully parsed {len(scene_details_list)} scenes for Chapter {target_chapter_number_global} from its plan file.")
 
-            # --- Load Character Roster & Faction Summary (similar to _write_short_story_prose) ---
+            # --- Load Character Roster Summary ---
             character_roster_summary = "Character roster not available."
             try:
-                characters_json_path = os.path.join(output_dir, "characters.json")
+                characters_json_path = os.path.join(output_dir, "story", "lore", "characters.json")
                 if os.path.exists(characters_json_path):
                     characters_data = read_json(characters_json_path)
                     if characters_data and "characters" in characters_data:
@@ -570,7 +571,7 @@ class ChapterWriting:
 
             faction_summary_info = "Faction information not available."
             try:
-                factions_json_path = os.path.join(output_dir, "factions.json")
+                factions_json_path = os.path.join(output_dir, "story", "lore", "factions.json")
                 if os.path.exists(factions_json_path):
                     factions_data = read_json(factions_json_path)
                     if factions_data:
@@ -643,7 +644,7 @@ class ChapterWriting:
 
             # --- Create subdirectory for chapter prose output ---
             chapters_subdir_name = "chapters"
-            full_chapters_subdir_path = os.path.join(output_dir, chapters_subdir_name)
+            full_chapters_subdir_path = os.path.join(output_dir, "story", "content", chapters_subdir_name)
             os.makedirs(full_chapters_subdir_path, exist_ok=True)
             # --- End subdirectory creation ---
 
@@ -653,7 +654,7 @@ class ChapterWriting:
             
             write_file(chapter_filepath_output, chapter_content_full)
             self.app.logger.info(f"Chapter {target_chapter_number_global} successfully written to: {chapter_filepath_output}")
-            show_success("Success", f"Chapter {target_chapter_number_global} generated and saved to {chapter_filename_output}")
+            # show_success("Success", f"Chapter {target_chapter_number_global} generated and saved to {chapter_filename_output}")
 
         except ValueError:
             self.app.logger.error("Invalid chapter number entered.", exc_info=True) # Log before showing messagebox
@@ -669,7 +670,7 @@ class ChapterWriting:
 
             # Simplified parameter loading for rewrite - assumes files are in output_dir
             output_dir = self.app.get_output_dir() # Get output_dir
-            parameters = open_file(os.path.join(output_dir, "parameters.txt"))
+            parameters = open_file(os.path.join(output_dir, "system", "parameters.txt"))
             # lore_content = open_file(os.path.join(output_dir, "generated_lore.md")) # Consider if needed for rewrite
             # characters_content = open_file(os.path.join(output_dir, "characters.md")) # Likely not needed directly if chapter text is main input
             # factions_content = open_file(os.path.join(output_dir, "factions.md")) # Likely not needed
@@ -677,7 +678,7 @@ class ChapterWriting:
 
             # --- Define chapters subdirectory --- 
             chapters_subdir_name = "chapters"
-            full_chapters_subdir_path = os.path.join(output_dir, chapters_subdir_name)
+            full_chapters_subdir_path = os.path.join(output_dir, "story", "content", chapters_subdir_name)
             # Ensure it exists for both reading and writing, though reading assumes it was created by write_chapter
             os.makedirs(full_chapters_subdir_path, exist_ok=True) 
             # --- End subdirectory definition ---
@@ -829,9 +830,10 @@ class ChapterWriting:
                 chapters_written = result.data.get("chapters_written", [])
                 if chapters_written:
                     chapter_num = chapters_written[0]
-                    show_success("Chapter Written", f"Successfully wrote Chapter {chapter_num}!")
+                    # show_success("Chapter Written", f"Successfully wrote Chapter {chapter_num}!")
                 else:
                     show_success("Complete", "All chapters are already written!")
+                    
             else:
                 show_error("Writing Error", f"Failed to write chapter: {result.message}")
                 
@@ -874,7 +876,7 @@ class ChapterWriting:
                     if len(errors) > 3:
                         message += f" (and {len(errors) - 3} more)"
                 
-                show_success("Batch Writing Complete", message)
+                # show_success("Batch Writing Complete", message)
             else:
                 show_error("Writing Error", f"Failed to write chapters: {result.message}")
                 

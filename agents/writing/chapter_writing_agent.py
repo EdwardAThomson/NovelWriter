@@ -171,6 +171,92 @@ class ChapterWritingAgent(BaseAgent):
             except Exception as e:
                 self.logger.warning(f"Failed to initialize review system: {e}")
                 self.review_agent = None
+    
+    def get_available_tools(self) -> List[str]:
+        """Return list of available tools/capabilities for this agent."""
+        return [
+            "analyze_chapter_structure",
+            "create_writing_plan", 
+            "write_chapters_batch",
+            "write_single_chapter",
+            "get_progress_report",
+            "quality_review_system",
+            "batch_processing"
+        ]
+    
+    def get_required_fields(self) -> List[str]:
+        """Return list of required fields for task processing."""
+        return [
+            "task_type",  # "analyze_structure", "write_chapters", "write_single_chapter"
+            "output_dir",
+            "chapter_info_list"  # Optional, can be generated if not provided
+        ]
+    
+    def process_task(self, task_data: Dict[str, Any]) -> AgentResult:
+        """Process different types of chapter writing tasks."""
+        try:
+            task_type = task_data.get("task_type")
+            
+            if task_type == "analyze_structure":
+                chapter_info_list, story_params = self.analyze_chapter_structure()
+                return AgentResult(
+                    success=True,
+                    data={
+                        "chapter_info_list": [asdict(info) for info in chapter_info_list],
+                        "story_parameters": story_params,
+                        "total_chapters": len(chapter_info_list)
+                    },
+                    message=f"Analyzed structure: {len(chapter_info_list)} chapters found"
+                )
+                
+            elif task_type == "write_chapters":
+                chapter_info_list = task_data.get("chapter_info_list", [])
+                if not chapter_info_list:
+                    # Generate chapter info if not provided
+                    chapter_info_list, _ = self.analyze_chapter_structure()
+                
+                batch_size = task_data.get("batch_size", 1)
+                plan = self.create_writing_plan(chapter_info_list, batch_size)
+                
+                return self.write_chapters_batch(chapter_info_list, plan)
+                
+            elif task_type == "write_single_chapter":
+                chapter_number = task_data.get("chapter_number")
+                chapter_info_list = task_data.get("chapter_info_list", [])
+                
+                if not chapter_info_list:
+                    chapter_info_list, _ = self.analyze_chapter_structure()
+                
+                # Find the specific chapter
+                target_chapter = None
+                for chapter_info in chapter_info_list:
+                    if chapter_info.chapter_number == chapter_number:
+                        target_chapter = chapter_info
+                        break
+                
+                if not target_chapter:
+                    return AgentResult(
+                        success=False,
+                        data=None,
+                        message=f"Chapter {chapter_number} not found in structure"
+                    )
+                
+                return self._write_single_chapter(target_chapter)
+                
+            else:
+                return AgentResult(
+                    success=False,
+                    data=None,
+                    message=f"Unknown task type: {task_type}"
+                )
+                
+        except Exception as e:
+            self.logger.error(f"Error processing task: {e}")
+            return AgentResult(
+                success=False,
+                data=None,
+                message=f"Task processing failed: {str(e)}"
+            )
         
     def analyze_chapter_structure(self) -> Tuple[List[ChapterInfo], Dict[str, Any]]:
         """

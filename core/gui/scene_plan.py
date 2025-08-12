@@ -116,7 +116,7 @@ class ScenePlanning:
         print(f"Generating chapter outlines with model: {selected_model}, output dir: {output_dir}")
 
         # --- Read Parameters to get selected structure --- 
-        parameters_file_path = os.path.join(output_dir, "parameters.txt")
+        parameters_file_path = os.path.join(output_dir, "system", "parameters.txt")
         selected_structure_name = "6-Act Structure" # Default
         try:
             params = {}
@@ -155,7 +155,7 @@ class ScenePlanning:
                 safe_section_name = current_section_name.lower().replace(' ', '_').replace(':','').replace('/','_')
                 
                 input_filename_base = f"{safe_selected_structure_name}_{safe_section_name}.md"
-                input_filepath = os.path.join(output_dir, input_filename_base)
+                input_filepath = os.path.join(output_dir, "story", "structure", input_filename_base)
 
                 print(f"Processing section: {current_section_name} from file: {input_filepath}")
                 
@@ -192,11 +192,12 @@ class ScenePlanning:
 
                 # Save the chapter outline to a markdown file
                 output_filename_base = f"chapter_outlines_{safe_selected_structure_name}_{safe_section_name}.md"
-                output_filepath = os.path.join(output_dir, output_filename_base)
+                os.makedirs(os.path.join(output_dir, "story", "planning"), exist_ok=True)
+                output_filepath = os.path.join(output_dir, "story", "planning", output_filename_base)
                 write_file(output_filepath, response)
                 print(f"Chapter outline for {current_section_name} saved to {output_filepath}")
 
-            show_success("Success", f"Chapter outlines for '{selected_structure_name}' generated successfully.")
+            # show_success("Success", f"Chapter outlines for '{selected_structure_name}' generated successfully.")
 
         except FileNotFoundError as fnf_e: # Should be caught per-file above, but as a fallback
             show_error("Error", f"A required file was not found: {fnf_e}")
@@ -218,7 +219,7 @@ class ScenePlanning:
         print(f"Generating scene plans with model: {selected_model}, output dir: {output_dir}")
 
         # --- Read Parameters to get selected structure --- 
-        parameters_file_path = os.path.join(output_dir, "parameters.txt")
+        parameters_file_path = os.path.join(output_dir, "system", "parameters.txt")
         selected_structure_name = "6-Act Structure" # Default
         try:
             params = {}
@@ -250,7 +251,7 @@ class ScenePlanning:
 
         try:
             # Load the overall lore content once
-            lore_content_path = os.path.join(output_dir, "generated_lore.md")
+            lore_content_path = os.path.join(output_dir, "story", "lore", "generated_lore.md")
             try:
                 lore_content = open_file(lore_content_path).strip()
             except FileNotFoundError:
@@ -265,7 +266,7 @@ class ScenePlanning:
                 
                 # Input filename from generate_chapter_outline
                 chapter_outline_input_base = f"chapter_outlines_{safe_selected_structure_name}_{safe_section_name}.md"
-                chapter_outline_input_filepath = os.path.join(output_dir, chapter_outline_input_base)
+                chapter_outline_input_filepath = os.path.join(output_dir, "story", "planning", chapter_outline_input_base)
 
                 print(f"Scene Planning for section: {current_section_name} using file: {chapter_outline_input_filepath}")
 
@@ -314,13 +315,14 @@ class ScenePlanning:
                     response = send_prompt(prompt, model=selected_model)
 
                     output_scene_plan_base = f"scenes_{safe_selected_structure_name}_{safe_section_name}_ch{current_chapter_for_prompt}.md"
-                    output_scene_plan_filepath = os.path.join(output_dir, output_scene_plan_base)
+                    os.makedirs(os.path.join(output_dir, "story", "planning"), exist_ok=True)
+                    output_scene_plan_filepath = os.path.join(output_dir, "story", "planning", output_scene_plan_base)
                     write_file(output_scene_plan_filepath, response)
                     print(f"Scene plan for Chapter {current_chapter_for_prompt} saved to {output_scene_plan_filepath}")
                 
                 overall_chapter_number += len(chapters_in_section_file) # Increment global chapter counter by number of chapters processed in this section
 
-            show_success("Success", f"Scene plans for '{selected_structure_name}' generated successfully.")
+            # show_success("Success", f"Scene plans for '{selected_structure_name}' generated successfully.")
 
         except FileNotFoundError as fnf_e:
             show_error("Error", f"Scene Plan: A required file was not found: {fnf_e}")
@@ -339,7 +341,7 @@ class ScenePlanning:
         self.app.logger.info(f"Planning Long-Form Scenes (Novella/Novel/Epic). Model: {selected_model}, Output Dir: {output_dir}")
 
         # --- Read Parameters to get selected structure and length ---
-        parameters_file_path = os.path.join(output_dir, "parameters.txt")
+        parameters_file_path = os.path.join(output_dir, "system", "parameters.txt")
         selected_structure_name = "6-Act Structure" # Default
         story_length = "Novel (Standard)" # Default for prompt context
         try:
@@ -370,7 +372,7 @@ class ScenePlanning:
             return
 
         try:
-            lore_content_path = os.path.join(output_dir, "generated_lore.md")
+            lore_content_path = os.path.join(output_dir, "story", "lore", "generated_lore.md")
             try:
                 lore_content = open_file(lore_content_path).strip()
             except FileNotFoundError:
@@ -385,7 +387,7 @@ class ScenePlanning:
                 safe_section_name = current_section_name.lower().replace(' ', '_').replace(':','').replace('/','_')
                 
                 chapter_outline_input_base = f"chapter_outlines_{safe_selected_structure_name}_{safe_section_name}.md"
-                chapter_outline_input_filepath = os.path.join(output_dir, chapter_outline_input_base)
+                chapter_outline_input_filepath = os.path.join(output_dir, "story", "planning", chapter_outline_input_base)
 
                 self.app.logger.info(f"Scene Planning for section: {current_section_name} using chapter outline: {chapter_outline_input_filepath}")
 
@@ -442,7 +444,7 @@ class ScenePlanning:
 
                     # --- Create subdirectory for these scene plans ---
                     scene_plans_subdir_name = "detailed_scene_plans"
-                    full_scene_plans_subdir_path = os.path.join(output_dir, scene_plans_subdir_name)
+                    full_scene_plans_subdir_path = os.path.join(output_dir, "story", "planning", scene_plans_subdir_name)
                     os.makedirs(full_scene_plans_subdir_path, exist_ok=True)
                     # --- End subdirectory creation ---
 
@@ -454,7 +456,7 @@ class ScenePlanning:
                 
                 overall_chapter_number += len(chapters_in_section_file) 
 
-            show_success("Success", f"Scene plans for '{selected_structure_name}' generated successfully.")
+            #show_success("Success", f"Scene plans for '{selected_structure_name}' generated successfully.")
 
         except FileNotFoundError as fnf_e:
             self.app.logger.error(f"Scene Plan: File not found - {fnf_e}", exc_info=True)
@@ -510,7 +512,7 @@ class ScenePlanning:
         # --- Load Lore Context (Optional but good) ---
         lore_content = "Overall lore context is missing."
         try:
-            lore_content_path = os.path.join(output_dir, "generated_lore.md")
+            lore_content_path = os.path.join(output_dir, "story", "lore", "generated_lore.md")
             if os.path.exists(lore_content_path):
                 lore_content = open_file(lore_content_path).strip()
                 self.app.logger.info(f"Loaded lore context from {lore_content_path}")
@@ -559,12 +561,13 @@ class ScenePlanning:
         self.app.logger.info(f"Received short story scenes from LLM. Length: {len(response)} chars.")
 
         output_filename_base = f"scenes_short_story_{safe_structure_name_for_file}.md"
-        output_filename_full_path = os.path.join(output_dir, output_filename_base)
+        os.makedirs(os.path.join(output_dir, "story", "planning"), exist_ok=True)
+        output_filename_full_path = os.path.join(output_dir, "story", "planning", output_filename_base)
         
         try:
             write_file(output_filename_full_path, response)
             self.app.logger.info(f"Short story scenes saved successfully to {output_filename_full_path}")
-            show_success("Success", f"Short story scenes generated and saved to {output_filename_full_path}")
+            # show_success("Success", f"Short story scenes generated and saved to {output_filename_full_path}")
         except Exception as e:
             self.app.logger.error(f"Error saving short story scenes to {output_filename_full_path}: {e}", exc_info=True)
             show_error("Error", f"Failed to save short story scenes: {e}")

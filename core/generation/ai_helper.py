@@ -32,7 +32,8 @@ _model_config = { # Renamed to avoid potential naming conflicts if imported dire
     "o1": lambda prompt: send_prompt_o1(prompt, model="o1"), # Assuming these are placeholders or deprecated
     "o1-mini": lambda prompt: send_prompt_o1(prompt, model="o1-mini"),
     "o3": lambda prompt: send_prompt_o1(prompt, model="o3"),
-    "o4-mini": lambda prompt: send_prompt_o1(prompt, model="o3-mini"),
+    "o4-mini": lambda prompt: send_prompt_o1(prompt, model="o4-mini"),
+    "gpt-5-2025-08-07": lambda prompt: send_prompt_o1(prompt, model="gpt-5-2025-08-07"),
     #"gpt-4-turbo": lambda prompt: send_prompt_oai( # Added gpt-4-turbo if supported by send_prompt_oai
     #    prompt=prompt,
     #    model="gpt-4-turbo",

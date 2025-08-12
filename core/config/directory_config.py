@@ -277,6 +277,32 @@ class DirectoryManager:
         else:
             # For legacy structure, create quality directory in root
             return "quality"
+    
+    def glob_files(self, pattern: str) -> list:
+        """
+        Find files matching a glob pattern relative to the output directory.
+        
+        Args:
+            pattern: Glob pattern to match (e.g., "story/lore/*.md", "chapters/*.md")
+            
+        Returns:
+            List of file paths relative to output_dir that match the pattern
+        """
+        import glob
+        
+        # Create full glob pattern
+        full_pattern = os.path.join(self.output_dir, pattern)
+        
+        # Get matching files
+        matching_files = glob.glob(full_pattern)
+        
+        # Convert back to relative paths
+        relative_files = []
+        for file_path in matching_files:
+            relative_path = os.path.relpath(file_path, self.output_dir)
+            relative_files.append(relative_path)
+        
+        return relative_files
 
 
 # Global configuration - can be set by user preferences
