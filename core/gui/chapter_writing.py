@@ -588,6 +588,16 @@ class ChapterWriting:
                             self.app.logger.info(f"Loaded faction summary for Chapter {target_chapter_number_global}.")
             except Exception as e_faction_load:
                 self.app.logger.warning(f"Could not load/process faction info for Chapter {target_chapter_number_global}: {e_faction_load}", exc_info=True)
+
+            # Load lore content
+            lore_content = "Lore context is missing or not loaded."
+            try:
+                lore_path = os.path.join(output_dir, "story", "lore", "generated_lore.md")
+                if os.path.exists(lore_path):
+                    lore_content = open_file(lore_path)
+                    self.app.logger.info(f"Loaded lore content for Chapter {target_chapter_number_global}.")
+            except Exception as e_lore_load:
+                self.app.logger.warning(f"Could not load lore content for Chapter {target_chapter_number_global}: {e_lore_load}", exc_info=True)
             # --- End Context Loading --- 
 
             generated_scenes_for_chapter = [] # Changed from `scenes` to avoid conflict with original `scenes_content_for_chapter`
