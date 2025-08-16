@@ -367,36 +367,43 @@ class StoryGenerationOrchestrator(BaseAgent):
             step_result = self._execute_single_workflow_step(step_name, story_parameters)
             
             if step_result["success"]:
-                # Scan for actual output files created by this step
-                self.scan_output_files()
-                
-                # Validate that files were actually created before marking as completed
-                workflow_state = self.state_manager.load_state()
-                step_data = workflow_state.steps.get(step_name)
-                files_created = len(step_data.output_files) if step_data else 0
-                
-                if files_created > 0:
-                    # Update step status to completed only if files were created
-                    self.update_step_progress(
-                        step_name, 
-                        CheckpointStatus.COMPLETED,
-                        quality_score=step_result.get("quality_score")
-                    )
-                    self.logger.info(f"✅ Step {step_name} completed with {files_created} files generated")
+                # Check if step was skipped due to already being completed
+                if step_result.get("skipped", False):
+                    # Step was skipped, ensure it's marked as completed and scan files
+                    self.scan_output_files()
+                    self.update_step_progress(step_name, CheckpointStatus.COMPLETED)
+                    self.logger.info(f"✅ Step {step_name} skipped (already completed)")
                 else:
-                    # Step execution succeeded but no files were created - mark as failed
-                    self.update_step_progress(step_name, CheckpointStatus.FAILED)
-                    error_msg = f"Step {step_name} execution completed but no output files were generated"
-                    self.logger.error(error_msg)
-                    return StoryGenerationResult(
-                        success=False,
-                        generated_content={},
-                        workflow_completed=[],
-                        quality_scores={},
-                        consistency_reports=[],
-                        recommendations=[error_msg],
-                        execution_summary=error_msg
-                    )
+                    # Scan for actual output files created by this step
+                    self.scan_output_files()
+                    
+                    # Validate that files were actually created before marking as completed
+                    workflow_state = self.state_manager.load_state()
+                    step_data = workflow_state.steps.get(step_name)
+                    files_created = len(step_data.output_files) if step_data else 0
+                    
+                    if files_created > 0:
+                        # Update step status to completed only if files were created
+                        self.update_step_progress(
+                            step_name, 
+                            CheckpointStatus.COMPLETED,
+                            quality_score=step_result.get("quality_score")
+                        )
+                        self.logger.info(f"✅ Step {step_name} completed with {files_created} files generated")
+                    else:
+                        # Step execution succeeded but no files were created - mark as failed
+                        self.update_step_progress(step_name, CheckpointStatus.FAILED)
+                        error_msg = f"Step {step_name} execution completed but no output files were generated"
+                        self.logger.error(error_msg)
+                        return StoryGenerationResult(
+                            success=False,
+                            generated_content={},
+                            workflow_completed=[],
+                            quality_scores={},
+                            consistency_reports=[],
+                            recommendations=[error_msg],
+                            execution_summary=error_msg
+                        )
                 
                 # Perform validation if enabled
                 validation_result = self._validate_workflow_step(
@@ -487,9 +494,30 @@ class StoryGenerationOrchestrator(BaseAgent):
         
         return False
     
+    def _is_step_completed(self, step_name: str) -> bool:
+        """Check if a step is already completed to prevent regeneration."""
+        # First check workflow state if available
+        if self.workflow_state:
+            step_status = self.workflow_state.steps.get(step_name)
+            if step_status and step_status.status == CheckpointStatus.COMPLETED:
+                return True
+        
+        # Also check if files exist (more reliable than state)
+        return self._check_step_files_exist(step_name)
+    
     def _execute_single_workflow_step(self, step_name: str, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a single workflow step by calling the appropriate generation method."""
         try:
+            # Check if step is already completed to prevent regeneration
+            if self._is_step_completed(step_name):
+                self.logger.info(f"Step {step_name} already completed, skipping regeneration")
+                return {
+                    "success": True,
+                    "message": f"Step {step_name} already completed",
+                    "content": {},
+                    "skipped": True
+                }
+            
             if step_name == "lore":
                 return self._generate_lore(parameters)
             elif step_name == "structure":
@@ -501,7 +529,9 @@ class StoryGenerationOrchestrator(BaseAgent):
                 structure_content = self._load_existing_structure()
                 return self._generate_scene_plans(parameters, structure_content)
             elif step_name == "chapters":
-                return self._generate_chapters(parameters)
+                # Load existing content for chapter generation
+                existing_content = self._load_existing_content_for_chapters()
+                return self._generate_chapters(parameters, existing_content)
             else:
                 return {
                     "success": False,
@@ -577,6 +607,114 @@ class StoryGenerationOrchestrator(BaseAgent):
             structure_content = {}
             
         return structure_content
+    
+    def _load_existing_content_for_chapters(self) -> Dict:
+        """Load existing content from all previous steps for chapter generation."""
+        existing_content = {}
+        
+        try:
+            # Load lore content
+            existing_content["lore"] = self._load_existing_lore()
+            
+            # Load structure content
+            existing_content["structure"] = self._load_existing_structure()
+            
+            # Load scene plans
+            scene_content = {}
+            
+            # Load scene plans from planning directory
+            scene_plans_dir = os.path.join(self.output_dir, "story", "planning")
+            if os.path.exists(scene_plans_dir):
+                # Look for scene plan files
+                import glob
+                scene_files = glob.glob(os.path.join(scene_plans_dir, "scenes_*.md"))
+                for scene_file in scene_files:
+                    filename = os.path.basename(scene_file)
+                    try:
+                        with open(scene_file, 'r', encoding='utf-8') as f:
+                            scene_content[filename] = f.read()
+                    except Exception as e:
+                        self.logger.warning(f"Could not load scene file {scene_file}: {e}")
+            
+            existing_content["scenes"] = scene_content
+            
+            self.logger.info(f"Loaded existing content for chapters: lore={len(existing_content['lore'])}, structure={len(existing_content['structure'])}, scenes={len(existing_content['scenes'])}")
+            return existing_content
+            
+        except Exception as e:
+            self.logger.error(f"Error loading existing content for chapters: {e}")
+            return {"lore": {}, "structure": {}, "scenes": {}}
+    
+    def _generate_short_story_prose(self, story_params: Dict) -> Dict[str, Any]:
+        """Generate Short Story prose by clicking GUI button like a human would."""
+        self.logger.info("📝 Agent starting Short Story prose generation - clicking GUI button like a human")
+        
+        try:
+            if not (hasattr(self, 'app_instance') and self.app_instance):
+                raise Exception("No GUI access available - cannot click buttons")
+            
+            app = self.app_instance
+            chapter_writing_ui = app.chapter_writing_ui
+            output_dir = story_params.get("output_directory", "current_work")
+            
+            prose_results = {
+                "functions_executed": [],
+                "files_generated": [],
+                "button_clicks": [],
+                "step_reviews": {},
+                "quality_scores": {},
+                "improvement_suggestions": {}
+            }
+            
+            # Step 1: Write Short Story Prose
+            self.logger.info("🔹 Step 1: Clicking 'Write Short Story' button")
+            try:
+                chapter_writing_ui._write_short_story_prose()
+                prose_results["functions_executed"].append("Write Short Story")
+                prose_results["button_clicks"].append("write_short_story_button")
+                self.logger.info("✅ Short Story prose generation completed")
+                
+                # Phase 1: Intelligent review of generated content
+                self._review_step_output("short_story_prose", output_dir, prose_results)
+                
+            except Exception as e:
+                self.logger.warning(f"⚠️ Short Story prose generation failed: {e}")
+            
+            # Final pause to ensure prose file is written
+            time.sleep(2.0)
+            
+            # Check what files were generated
+            generated_files = []
+            
+            # Look for short story prose files
+            prose_files_pattern = os.path.join(output_dir, "story", "content", "prose_short_story_*.md")
+            import glob
+            prose_files = glob.glob(prose_files_pattern)
+            
+            for prose_file in prose_files:
+                relative_path = os.path.relpath(prose_file, output_dir)
+                generated_files.append(relative_path)
+            
+            prose_results["files_generated"] = generated_files
+            prose_results["total_functions_executed"] = len(prose_results["functions_executed"])
+            
+            self.logger.info(f"🎉 Short Story prose generation completed! Generated {len(generated_files)} files")
+            self.logger.info(f"📁 Files: {', '.join(generated_files)}")
+            
+            return {
+                "success": True,
+                "content": prose_results,
+                "step": "chapters"
+            }
+            
+        except Exception as e:
+            self.logger.error(f"❌ Error during Short Story prose generation: {e}")
+            return {
+                "success": False,
+                "content": None,
+                "error": str(e),
+                "step": "chapters"
+            }
     
     def execute_complete_workflow(self, story_parameters: Dict[str, Any], 
                                 quality_threshold: float = 0.7, 
@@ -1227,24 +1365,32 @@ class StoryGenerationOrchestrator(BaseAgent):
         self.logger.info("🖋️ Starting automated chapter writing...")
         
         try:
-            # Initialize chapter writing agent with directory structure preference
-            chapter_agent = ChapterWritingAgent(self.output_dir, app_instance=None, use_new_structure=self.use_new_structure)
+            # Check if this is a Short Story
+            story_length = story_params.get("story_length", "Novel (Standard)")
             
-            # Analyze story structure to find chapters
-            self.logger.info("📊 Analyzing chapter structure...")
-            
-            # Tactical pause to ensure all prerequisite files are available
-            time.sleep(1.0)
-            
-            chapter_info_list, story_parameters = chapter_agent.analyze_chapter_structure()
-            
-            if not chapter_info_list:
-                return {
-                    "success": False,
-                    "content": None,
-                    "error": "No chapters found in story structure",
-                    "step": "chapters"
-                }
+            if story_length == "Short Story":
+                # For Short Stories, use GUI method directly
+                return self._generate_short_story_prose(story_params)
+            else:
+                # For longer forms, use chapter agent
+                # Initialize chapter writing agent with directory structure preference
+                chapter_agent = ChapterWritingAgent(self.output_dir, app_instance=None, use_new_structure=self.use_new_structure)
+                
+                # Analyze story structure to find chapters
+                self.logger.info("📊 Analyzing chapter structure...")
+                
+                # Tactical pause to ensure all prerequisite files are available
+                time.sleep(1.0)
+                
+                chapter_info_list, story_parameters = chapter_agent.analyze_chapter_structure()
+                
+                if not chapter_info_list:
+                    return {
+                        "success": False,
+                        "content": None,
+                        "error": "No chapters found in story structure",
+                        "step": "chapters"
+                    }
             
             # Create writing plan
             plan = chapter_agent.create_writing_plan(chapter_info_list, batch_size=3)  # Write 3 chapters at a time
@@ -1406,23 +1552,23 @@ class StoryGenerationOrchestrator(BaseAgent):
             potential_files = []
             
             if story_length == "Short Story":
-                # Short story scene files
-                potential_files.append(f"scenes_short_story_{safe_structure_name}.md")
+                # Short story scene files (in story/planning/ directory)
+                potential_files.append(f"story/planning/scenes_short_story_{safe_structure_name}.md")
             else:
-                # Chapter outline files for each section of the structure
+                # Chapter outline files for each section of the structure (in story/planning/ directory)
                 sections = STRUCTURE_SECTIONS_MAP.get(story_structure, [])
                 for section in sections:
                     safe_section_name = section.lower().replace(' ', '_').replace(':', '').replace('/', '_').replace('(', '').replace(')', '')
-                    potential_files.append(f"chapter_outlines_{safe_structure_name}_{safe_section_name}.md")
+                    potential_files.append(f"story/planning/chapter_outlines_{safe_structure_name}_{safe_section_name}.md")
             
             return potential_files
             
         except Exception as e:
             self.logger.warning(f"Error determining expected scene planning files: {e}")
-            # Fallback to common patterns
+            # Fallback to common patterns (with correct directory structure)
             return [
-                "scenes_short_story_3-act_structure.md",
-                "chapter_outlines_6-act_structure_beginning.md"
+                "story/planning/scenes_short_story_3-act_structure.md",
+                "story/planning/chapter_outlines_6-act_structure_beginning.md"
             ]
     
     def _review_step_output(self, step_name: str, output_dir: str, results_dict: Dict):

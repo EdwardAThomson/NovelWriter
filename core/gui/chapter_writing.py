@@ -181,8 +181,8 @@ class ChapterWriting:
             
             # --- New parsing logic using re.finditer --- 
             parsed_scenes = []
-            # Ultra-specific pattern for debugging:
-            heading_pattern = r'^## Scene \d+:.*$' 
+            # Pattern to match both colon and dash formats with optional space:
+            heading_pattern = r'^## Scene \d+\s*[:\-].*$' 
             self.app.logger.debug(f"Using ULTRA-SPECIFIC heading_pattern: {heading_pattern}")
 
             # Log the beginning of the content that finditer will process
@@ -613,7 +613,7 @@ class ChapterWriting:
                     f"This story follows the '{selected_structure_name}' framework. We are currently in the '{current_section_name_for_chapter}' part of this structure.",
                     f"I will provide you with the detailed plan for a single scene within Chapter {target_chapter_number_global}. Please write the full prose for THIS SCENE ONLY.",
                     "Do not try to write other scenes or summarize the chapter.",
-                    "\n## Current Scene Description (Scene {scene_idx_in_chapter} of Chapter {target_chapter_number_global}):",
+                    f"\n## Current Scene Description (Scene {scene_idx_in_chapter} of Chapter {target_chapter_number_global}):",
                     single_scene_detail_from_plan, # This is the full content for one scene from the plan file
                     "\n## Overall Story Context (for your reference):",
                     f"Full Universe Lore: {lore_content}",

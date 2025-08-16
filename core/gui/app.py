@@ -369,66 +369,69 @@ class NovelWriterApp:
         )
         self.chapters_step_btn.pack(side="left", padx=2)
         
-        # Checkpoint controls
-        checkpoint_frame = tk.LabelFrame(workflow_container, text="🚐 Checkpoint Controls", padx=5, pady=5)
-        checkpoint_frame.pack(fill="x", pady=5)
+        # Checkpoint controls - COMMENTED OUT FOR NOW
+        # checkpoint_frame = tk.LabelFrame(workflow_container, text="🚐 Checkpoint Controls", padx=5, pady=5)
+        # checkpoint_frame.pack(fill="x", pady=5)
         
-        # Checkpoint mode toggle
+        # # Checkpoint mode toggle
+        # self.checkpoint_mode = tk.BooleanVar(value=False)
+        # checkpoint_check = tk.Checkbutton(
+        #     checkpoint_frame,
+        #     text="Enable Checkpoint Mode (Pause at each step for approval)",
+        #     variable=self.checkpoint_mode,
+        #     command=self.toggle_checkpoint_mode,
+        #     font=("Arial", 10)
+        # )
+        # checkpoint_check.pack(anchor="w", pady=2)
+        
+        # # Checkpoint status
+        # self.checkpoint_status = tk.Label(
+        #     checkpoint_frame,
+        #     text="Checkpoint mode disabled",
+        #     font=("Arial", 9),
+        #     fg="gray"
+        # )
+        # self.checkpoint_status.pack(anchor="w", pady=2)
+        
+        # # Checkpoint action buttons
+        # checkpoint_actions = tk.Frame(checkpoint_frame)
+        # checkpoint_actions.pack(fill="x", pady=2)
+        
+        # self.approve_btn = tk.Button(
+        #     checkpoint_actions,
+        #     text="✅ Approve & Continue",
+        #     command=self.approve_checkpoint,
+        #     bg="#4CAF50",
+        #     fg="white",
+        #     font=("Arial", 9, "bold"),
+        #     state="disabled"
+        # )
+        # self.approve_btn.pack(side="left", padx=2)
+        
+        # self.retry_btn = tk.Button(
+        #     checkpoint_actions,
+        #     text="🔄 Retry Step",
+        #     command=self.retry_checkpoint,
+        #     bg="#FF9800",
+        #     fg="white",
+        #     font=("Arial", 9, "bold"),
+        #     state="disabled"
+        # )
+        # self.retry_btn.pack(side="left", padx=2)
+        
+        # self.review_btn = tk.Button(
+        #     checkpoint_actions,
+        #     text="📋 Review Step",
+        #     command=self.review_checkpoint,
+        #     bg="#9C27B0",
+        #     fg="white",
+        #     font=("Arial", 9, "bold"),
+        #     state="disabled"
+        # )
+        # self.review_btn.pack(side="left", padx=2)
+        
+        # Initialize checkpoint mode variable for compatibility
         self.checkpoint_mode = tk.BooleanVar(value=False)
-        checkpoint_check = tk.Checkbutton(
-            checkpoint_frame,
-            text="Enable Checkpoint Mode (Pause at each step for approval)",
-            variable=self.checkpoint_mode,
-            command=self.toggle_checkpoint_mode,
-            font=("Arial", 10)
-        )
-        checkpoint_check.pack(anchor="w", pady=2)
-        
-        # Checkpoint status
-        self.checkpoint_status = tk.Label(
-            checkpoint_frame,
-            text="Checkpoint mode disabled",
-            font=("Arial", 9),
-            fg="gray"
-        )
-        self.checkpoint_status.pack(anchor="w", pady=2)
-        
-        # Checkpoint action buttons
-        checkpoint_actions = tk.Frame(checkpoint_frame)
-        checkpoint_actions.pack(fill="x", pady=2)
-        
-        self.approve_btn = tk.Button(
-            checkpoint_actions,
-            text="✅ Approve & Continue",
-            command=self.approve_checkpoint,
-            bg="#4CAF50",
-            fg="white",
-            font=("Arial", 9, "bold"),
-            state="disabled"
-        )
-        self.approve_btn.pack(side="left", padx=2)
-        
-        self.retry_btn = tk.Button(
-            checkpoint_actions,
-            text="🔄 Retry Step",
-            command=self.retry_checkpoint,
-            bg="#FF9800",
-            fg="white",
-            font=("Arial", 9, "bold"),
-            state="disabled"
-        )
-        self.retry_btn.pack(side="left", padx=2)
-        
-        self.review_btn = tk.Button(
-            checkpoint_actions,
-            text="📋 Review Step",
-            command=self.review_checkpoint,
-            bg="#9C27B0",
-            fg="white",
-            font=("Arial", 9, "bold"),
-            state="disabled"
-        )
-        self.review_btn.pack(side="left", padx=2)
         
         # Quality standards
         quality_frame = tk.LabelFrame(workflow_container, text="Quality Standards", padx=5, pady=5)
@@ -879,7 +882,8 @@ class NovelWriterApp:
                 success_msg = f"{emoji} {step_name.title()} step completed successfully!"
                 if step_result.quality_scores and step_name in step_result.quality_scores:
                     quality_score = step_result.quality_scores[step_name]
-                    success_msg += f"\nQuality Score: {quality_score:.2f}"
+                    if quality_score is not None:
+                        success_msg += f"\nQuality Score: {quality_score:.2f}"
                 
                 show_success("Step Completed", success_msg)
                 

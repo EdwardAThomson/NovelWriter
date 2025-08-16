@@ -491,7 +491,7 @@ class ScenePlanning:
         # Filename based on the output of _outline_short_story_plot in story_structure.py
         safe_structure_name_for_file = selected_structure_name.lower().replace(' ', '_').replace(':', '').replace('/', '_')
         detailed_plot_filename = f"plot_short_story_{safe_structure_name_for_file}.md"
-        detailed_plot_filepath = os.path.join(output_dir, detailed_plot_filename)
+        detailed_plot_filepath = os.path.join(output_dir, "story", "structure", detailed_plot_filename)
 
         try:
             self.app.logger.info(f"Loading detailed short story plot from: {detailed_plot_filepath}")
