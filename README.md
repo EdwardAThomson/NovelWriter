@@ -17,7 +17,7 @@ NovelWriter is a comprehensive Python application designed to assist authors in 
 
 Each genre features specialized faction generation, character creation, and world-building tailored to genre conventions and tropes.
 
-![Screenshot of NovelWriter](./screenshots/screenshot.png)
+![Screenshot of NovelWriter](./screenshots/first_screen.png)
 
 The application features a dynamic LLM model selector, allowing users to choose from various supported models for different generation tasks. Currently configured models include:
 
@@ -28,7 +28,9 @@ The application features a dynamic LLM model selector, allowing users to choose 
 
 Running this code requires API keys for the specific LLMs you intend to use (e.g., an **OpenAI API key** for GPT models, a **Google AI API key** for Gemini models, **Anthropic API Key** for Claude models). These keys should be stored in a `.env` file in the project's root directory.
 
-While many steps are automated, the output often serves as a strong starting point that can be further refined by the author.
+Full automation is available, however the outputs can also serve as a starting point that can be further refined by the author.
+
+![Screenshot of NovelWriter - Automation tab](./screenshots/automation.png)
 
 ## ✨ Key Features
 
