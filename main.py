@@ -9,5 +9,6 @@ from core.gui.app import NovelWriterApp
 
 if __name__ == "__main__":
     root = tk.Tk()
+    root.geometry("1200x900")  # Width x Height in pixels
     app = NovelWriterApp(root)
     root.mainloop()

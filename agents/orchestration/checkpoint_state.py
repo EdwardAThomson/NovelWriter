@@ -67,22 +67,20 @@ class CheckpointStateManager:
                 "story/lore/background_*.md"  # Character backstories
             ],
             "structure": [
-                "story/structure/6-act_structure_*.md",  # Story section files
-                "story/structure/character_arcs.md",
-                "story/structure/faction_arcs.md", 
-                "story/structure/reconciled_arcs.md",
+                "story/structure/*.md",  # All structure files including 6-act, character arcs, etc.
                 "story/planning/reconciled_locations_arcs.md",  # Final arcs with locations
                 "story/planning/suggested_titles.md"  # Title suggestions
             ],
             "scenes": [
                 "story/planning/detailed_scene_plans/scenes_*.md",  # Detailed scene plans (long-form)
-                "story/planning/scenes_short_story_*.md",  # Short story scene plans
-                "story/planning/chapter_outlines_*.md"  # Chapter outlines
+                "story/planning/scenes_*.md",  # Scene plans (including short story)
+                "story/planning/chapter_outlines_*.md",  # Chapter outlines
+                "story/planning/reconciled_locations_arcs.md"  # Also count this for scenes
             ],
             "chapters": [
                 "story/content/chapters/chapter_*.md",  # Individual chapters
                 "story/content/chapters/re_chapter_*.md",  # Rewritten chapters
-                "story/content/prose_short_story_*.md"  # Short story files
+                "story/content/prose_*.md"  # All prose files including short stories
             ]
         }
     

@@ -577,6 +577,12 @@ class NovelWriterApp:
                 checkpoint_manager = CheckpointStateManager(self.get_output_dir())
                 workflow_state = checkpoint_manager.load_state()
                 
+                # If no state exists, create one from existing work
+                if workflow_state is None:
+                    # Get current parameters for state creation
+                    current_params = self.param_ui.get_current_parameters() if hasattr(self, 'param_ui') else {}
+                    workflow_state = checkpoint_manager.create_from_existing_work(current_params)
+                
                 # Scan for existing files to update progress display
                 checkpoint_manager.scan_output_files(workflow_state)
                 
@@ -770,10 +776,12 @@ class NovelWriterApp:
                 auto_retry=self.auto_retry.get()
             )
             
-            if generation_result.success:
+            # Handle dictionary result format
+            if generation_result["success"]:
                 self.handle_workflow_success(generation_result)
             else:
-                self.handle_workflow_error(generation_result.messages)
+                error_messages = generation_result.get("recommendations", [generation_result.get("error", "Unknown error")])
+                self.handle_workflow_error(error_messages)
                 
         except Exception as e:
             self.logger.error(f"Workflow execution failed: {e}")
@@ -797,11 +805,16 @@ class NovelWriterApp:
             self.workflow_status.config(text="Resuming workflow...", fg="orange")
             self.root.update()
             
-            # Resume the workflow
-            generation_result = self.story_orchestrator.resume_workflow(
-                existing_content=current_content,
-                quality_threshold=self.quality_threshold.get()
-            )
+            # Resume the workflow using process_task method
+            task_data = {
+                "story_parameters": self.gather_story_parameters(),
+                "generation_mode": "resume",
+                "target_steps": ["lore", "structure", "scenes", "chapters"],
+                "quality_standards": {"overall": self.quality_threshold.get()},
+                "use_validation": True
+            }
+            
+            generation_result = self.story_orchestrator.process_task(task_data)
             
             if generation_result.success:
                 self.handle_workflow_success(generation_result, resumed=True)
@@ -818,20 +831,20 @@ class NovelWriterApp:
             show_warning("Warning", "Agentic mode is not enabled")
             return
         
-        if not self.multi_agent_orchestrator:
+        if not self.analysis_orchestrator:
             show_warning("Warning", "Multi-agent orchestrator not initialized")
             return
         
         try:
-            # Get current content from active tab
+            # Get current content for analysis
             current_content = self.get_current_content()
             
             if not current_content:
-                show_warning("Warning", "No content found to analyze")
+                show_info("Info", "No content found to analyze")
                 return
             
             # Analyze with multi-agent orchestrator
-            analysis_result = self.multi_agent_orchestrator.analyze_content(current_content)
+            analysis_result = self.analysis_orchestrator.analyze_content(current_content)
             
             if analysis_result.success:
                 self.show_analysis_results(analysis_result)
@@ -991,14 +1004,32 @@ class NovelWriterApp:
         action = "Resumed" if resumed else "Completed"
         results_text = f"🎭 Workflow {action} Successfully!\n\n"
         
-        # Add basic result information
-        if hasattr(generation_result, 'data') and generation_result.data:
-            results_text += f"📊 Generated Content: {len(generation_result.data)} sections\n"
-        
-        if hasattr(generation_result, 'messages') and generation_result.messages:
-            results_text += f"📋 Messages: {len(generation_result.messages)}\n"
-            for msg in generation_result.messages[:5]:  # Show first 5 messages
-                results_text += f"   • {msg}\n"
+        # Add basic result information - handle both dict and object formats
+        if isinstance(generation_result, dict):
+            content = generation_result.get('content', {})
+            if content:
+                results_text += f"📊 Generated Content: {len(content)} sections\n"
+            
+            recommendations = generation_result.get('recommendations', [])
+            if recommendations:
+                results_text += f"📋 Recommendations: {len(recommendations)}\n"
+                for msg in recommendations[:5]:  # Show first 5 recommendations
+                    results_text += f"   • {msg}\n"
+            
+            quality_scores = generation_result.get('quality_scores', {})
+            if quality_scores:
+                results_text += f"⭐ Quality Scores:\n"
+                for step, score in quality_scores.items():
+                    results_text += f"   • {step}: {score:.2f}\n"
+        else:
+            # Legacy object format
+            if hasattr(generation_result, 'data') and generation_result.data:
+                results_text += f"📊 Generated Content: {len(generation_result.data)} sections\n"
+            
+            if hasattr(generation_result, 'messages') and generation_result.messages:
+                results_text += f"📋 Messages: {len(generation_result.messages)}\n"
+                for msg in generation_result.messages[:5]:  # Show first 5 messages
+                    results_text += f"   • {msg}\n"
         
         results_text += "\n🎉 Your story generation workflow has completed successfully!"
         
@@ -1260,10 +1291,11 @@ CONTENT GENERATED:
             
             # Update progress summary
             progress_summary = self.story_orchestrator.get_progress_summary()
-            summary_text = f"Workflow: {progress_summary['workflow_id'][:12]}... | "
-            summary_text += f"Progress: {progress_summary['completion_percentage']:.0f}% | "
-            summary_text += f"Current: {progress_summary['current_step'] or 'Complete'} | "
-            summary_text += f"Files: {progress_summary['total_output_files']}"
+            workflow_id = str(progress_summary.get('workflow_id', 'Unknown'))
+            summary_text = f"Workflow: {workflow_id[:12]}... | "
+            summary_text += f"Progress: {progress_summary.get('completion_percentage', 0):.0f}% | "
+            summary_text += f"Current: {progress_summary.get('current_step') or 'Complete'} | "
+            summary_text += f"Files: {progress_summary.get('total_output_files', 0)}"
             
             self.progress_summary.config(text=summary_text, fg="blue")
             
@@ -1479,7 +1511,7 @@ CONTENT GENERATED:
         
         try:
             # Get current parameters to include in the state
-            current_params = self.param_ui.get_parameters()
+            current_params = self.param_ui.get_current_parameters()
             
             # Create checkpoint state from existing work
             state = self.story_orchestrator.state_manager.create_from_existing_work(
