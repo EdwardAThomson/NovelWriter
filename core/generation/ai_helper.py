@@ -78,7 +78,7 @@ _model_config = { # Renamed to avoid potential naming conflicts if imported dire
     "claude-4-5-sonnet": lambda prompt: send_prompt_claude( # Keep if needed
          prompt=prompt,
          model="claude-sonnet-4-5-20250929",
-         max_tokens=4096,
+         max_tokens=8192,
          temperature=0.7
     ),
 }
