@@ -29,8 +29,8 @@ _model_config = { # Renamed to avoid potential naming conflicts if imported dire
         temperature=0.7,
         role_description="You are an expert storyteller focused on character relationships."
     ),
-    "o1": lambda prompt: send_prompt_o1(prompt, model="o1"), # Assuming these are placeholders or deprecated
-    "o1-mini": lambda prompt: send_prompt_o1(prompt, model="o1-mini"),
+    #"o1": lambda prompt: send_prompt_o1(prompt, model="o1"), # Assuming these are placeholders or deprecated
+    #"o1-mini": lambda prompt: send_prompt_o1(prompt, model="o1-mini"),
     "o3": lambda prompt: send_prompt_o1(prompt, model="o3"),
     "o4-mini": lambda prompt: send_prompt_o1(prompt, model="o4-mini"),
     "gpt-5-2025-08-07": lambda prompt: send_prompt_o1(prompt, model="gpt-5-2025-08-07"),
@@ -41,37 +41,43 @@ _model_config = { # Renamed to avoid potential naming conflicts if imported dire
     #    temperature=0.7,
     #    role_description="You are a helpful fiction writing assistant."
     #),
-    "gemini-1.5-pro-latest": lambda prompt: send_prompt_gemini( # Renamed key to match main.py example
-        prompt=prompt,
-        model_name="gemini-1.5-pro-latest", # Use the correct API model name here
-        max_output_tokens=8192,
-        temperature=0.7,
-        top_p=1,
-        top_k=40
-    ),
-    "gemini-2.0-pro-exp-02-05": lambda prompt: send_prompt_gemini( # Keep if needed
-         prompt=prompt,
-         model_name="gemini-2.0-pro-exp-02-05",
-         max_output_tokens=8192,
-         temperature=0.7,
-         top_p=1,
-         top_k=40
-    ),
+    #"gemini-1.5-pro-latest": lambda prompt: send_prompt_gemini( # Renamed key to match main.py example
+    #    prompt=prompt,
+    #    model_name="gemini-1.5-pro-latest", # Use the correct API model name here
+    #    max_output_tokens=8192,
+    #    temperature=0.7,
+    #    top_p=1,
+    #    top_k=40
+    #),
+    #"gemini-2.0-pro-exp-02-05": lambda prompt: send_prompt_gemini( # Keep if needed
+    #     prompt=prompt,
+    #     model_name="gemini-2.0-pro-exp-02-05",
+    #     max_output_tokens=8192,
+    #     temperature=0.7,
+    #     top_p=1,
+    #     top_k=40
+    #),
     "gemini-2.5-pro-exp-03-25": lambda prompt: send_prompt_gemini( # Keep if needed
          prompt=prompt,
          model_name="gemini-2.5-pro-exp-03-25",
          max_output_tokens=8192,
          temperature=0.7,
     ),
-    "claude-3-5-sonnet": lambda prompt: send_prompt_claude( # Keep if needed
+    #"claude-3-5-sonnet": lambda prompt: send_prompt_claude( # Keep if needed
+    #     prompt=prompt,
+    #     model="claude-3-5-sonnet-20241022",
+    #     max_tokens=4096,
+    #     temperature=1.0
+    #),
+    #"claude-3-7-sonnet": lambda prompt: send_prompt_claude( # Keep if needed
+    #     prompt=prompt,
+    #     model="claude-3-7-sonnet-20250219",
+    #     max_tokens=4096,
+    #     temperature=0.7
+    #),
+    "claude-4-5-sonnet": lambda prompt: send_prompt_claude( # Keep if needed
          prompt=prompt,
-         model="claude-3-5-sonnet-20241022",
-         max_tokens=4096,
-         temperature=1.0
-    ),
-    "claude-3-7-sonnet": lambda prompt: send_prompt_claude( # Keep if needed
-         prompt=prompt,
-         model="claude-3-7-sonnet-20250219",
+         model="claude-sonnet-4-5-20250929",
          max_tokens=4096,
          temperature=0.7
     ),

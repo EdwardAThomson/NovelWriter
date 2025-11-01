@@ -26,10 +26,15 @@ Each genre features specialized faction generation, character creation, and worl
 
 The application features a dynamic LLM model selector, allowing users to choose from various supported models for different generation tasks. Currently configured models include:
 
-*   OpenAI GPT-4o, o1, o1-mini o3, o4-mini
-*   Gemini 1.5, 2.0, 2.5 pro
-*   Claude 3.5, 3.7 Sonnet
+*   OpenAI GPT-5, GPT-4o, o3, o4-mini
+*   Claude 4.5 Sonnet
+*   Gemini 2.5 Pro
 *   *(You can add/remove models by configuring `ai_helper.py`)*
+
+Deprecated models:
+*   OpenAI o1, o1-mini o3, o4-mini
+*   Gemini 1.5, 2.0
+*   Claude 3.5, 3.7 Sonnet
 
 Running this code requires API keys for the specific LLMs you intend to use (e.g., an **OpenAI API key** for GPT models, a **Google AI API key** for Gemini models, **Anthropic API Key** for Claude models). These keys should be stored in a `.env` file in the project's root directory.
 
