@@ -8,6 +8,7 @@ NovelWriter is a comprehensive Python application designed to assist authors in 
 
 * [I Built An App To Write 100,000 Word Novels (Using AI)](https://youtu.be/7moN7PCRUpk)
 * [Do LLMs suck at creative writing? I analyzed their responses to find the best one](https://youtu.be/viOgoXF4MDQ)
+* [Attempting to avoid/ fix poor randomness in LLM outputs](https://www.youtube.com/watch?v=MtnDiqZVCkk)
 
 **🎯 Supported Genres:**
 
