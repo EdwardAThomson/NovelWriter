@@ -1343,6 +1343,14 @@ CONTENT GENERATED:
             return
         
         try:
+            # First, rescan output files so state reflects latest filesystem
+            state = self.story_orchestrator.state_manager.load_state()
+            if state:
+                self.story_orchestrator.state_manager.scan_output_files(state)
+                self.story_orchestrator.state_manager.save_state(state)
+                # Keep orchestrator's in-memory state in sync
+                self.story_orchestrator.workflow_state = state
+
             # Get workflow state from orchestrator
             workflow_state = self.story_orchestrator.get_workflow_state()
             if not workflow_state:
