@@ -5,6 +5,7 @@ from openai import OpenAI
 import os
 from dotenv import load_dotenv
 import google.generativeai as genai
+import anthropic
 
 
 load_dotenv()  # This will load environment variables from the .env file
@@ -18,6 +19,11 @@ client = OpenAI(
 # Adding the possibility of using the Gemini API
 g_api_key = os.environ.get("GEMINI_API_KEY")
 genai.configure(api_key=g_api_key)
+
+# Create an Anthropic client instance for Claude models
+anthropic_client = anthropic.Anthropic(
+    api_key=os.environ.get("CLAUDE_API_KEY"),
+)
 
 # --- Define Model Configurations ---
 # Define configurations for each model
@@ -190,7 +196,7 @@ def send_prompt_gemini(prompt, model_name="gemini-1.5-pro", max_output_tokens=10
         return None
 
 
-def send_prompt_claude(prompt, model="claude-3-sonnet-20240229", max_tokens=4096, temperature=0.7,
+def send_prompt_claude(prompt, model="claude-4-5-sonnet-20250929", max_tokens=4096, temperature=0.7,
                      role_description="You are a skilled creative writer focused on producing original fiction."):
     """
     Sends a prompt to Anthropic's Claude API and returns the generated text.
