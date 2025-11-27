@@ -9,7 +9,7 @@ from core.gui.lore import Lore
 from core.gui.story_structure import StoryStructure
 from core.gui.scene_plan import ScenePlanning
 from core.gui.chapter_writing import ChapterWriting
-from core.generation.ai_helper import get_supported_models
+from core.generation.ai_helper import get_supported_models, set_backend, get_backend, check_cli_availability, get_available_backends
 from core.gui.notifications import init_notifications, show_success, show_info, show_warning, show_error
 
 # Import agentic orchestrators
@@ -34,29 +34,51 @@ class NovelWriterApp:
         self.root = root
         self.root.title("Novel Writer")
 
-        # --- Add Model Selection ---
+        # --- Add Backend and Model Selection ---
         self.model_frame = ttk.Frame(root)
         self.model_frame.pack(pady=5, padx=10, fill='x')
 
-        ttk.Label(self.model_frame, text="Select LLM Model:").pack(side="left", padx=5)
+        # Backend selection
+        ttk.Label(self.model_frame, text="Backend:").pack(side="left", padx=(5, 2))
+        
+        self.available_backends = self._get_available_backends_list()
+        self.selected_backend_var = tk.StringVar(value="api")
+        
+        self.backend_combobox = ttk.Combobox(
+            self.model_frame,
+            textvariable=self.selected_backend_var,
+            values=self.available_backends,
+            state="readonly",
+            width=12
+        )
+        self.backend_combobox.pack(side="left", padx=(0, 10))
+        self.backend_combobox.bind("<<ComboboxSelected>>", self._on_backend_changed)
+
+        # Model selection (for API backend)
+        self.model_label = ttk.Label(self.model_frame, text="Model:")
+        self.model_label.pack(side="left", padx=(5, 2))
 
         # Get available models dynamically
         self.available_models = get_supported_models()
-        if not self.available_models: # Fallback if list is empty
-            self.available_models = ["gpt-4o"] # Provide a default fallback
-            # Potential place for a log warning if logger was already set up
-            # print("Warning: Could not retrieve models from ai_helper. Using default.")
+        if not self.available_models:
+            self.available_models = ["gpt-4o"]
 
-        self.selected_model_var = tk.StringVar(value=self.available_models[0] if self.available_models else "") # Default to the first model or empty
+        self.selected_model_var = tk.StringVar(value=self.available_models[0] if self.available_models else "")
 
         self.model_combobox = ttk.Combobox(
             self.model_frame,
             textvariable=self.selected_model_var,
-            values=self.available_models, # Use the dynamic list
+            values=self.available_models,
             state="readonly"
         )
         self.model_combobox.pack(side="left", fill='x', expand=True)
-        # --- End Model Selection ---
+        self.model_combobox.bind("<<ComboboxSelected>>", self._on_model_changed)
+        
+        # CLI availability indicator
+        self.cli_status_label = ttk.Label(self.model_frame, text="", foreground="gray")
+        self.cli_status_label.pack(side="right", padx=5)
+        self._update_cli_status()
+        # --- End Backend and Model Selection ---
 
         # Create main horizontal container
         self.main_container = tk.Frame(root)
@@ -168,6 +190,80 @@ class NovelWriterApp:
         if hasattr(self, 'logger') and self.logger:
             self.logger.debug(f"get_selected_model called. Returning: {model}")
         return model
+
+    def get_selected_backend(self):
+        """Returns the currently selected LLM backend."""
+        return self.selected_backend_var.get()
+
+    def _get_available_backends_list(self):
+        """Get list of available backends for the dropdown."""
+        try:
+            backends = get_available_backends()
+            return list(backends.keys())
+        except Exception:
+            return ["api"]  # Fallback to API only
+    
+    def _on_backend_changed(self, event=None):
+        """Handle backend selection change."""
+        backend = self.selected_backend_var.get()
+        model = self.selected_model_var.get()
+        
+        # Update model selector visibility based on backend
+        if backend == "api":
+            self.model_label.pack(side="left", padx=(5, 2))
+            self.model_combobox.pack(side="left", fill='x', expand=True)
+        else:
+            # Hide model selector for CLI backends
+            self.model_label.pack_forget()
+            self.model_combobox.pack_forget()
+        
+        # Set the backend in ai_helper
+        try:
+            set_backend(backend, model)
+            if hasattr(self, 'logger') and self.logger:
+                self.logger.info(f"Backend changed to: {backend}" + (f" (model: {model})" if backend == "api" else ""))
+            show_success("Backend Changed", f"{backend}" + (f" ({model})" if backend == "api" else ""))
+        except RuntimeError as e:
+            if hasattr(self, 'logger') and self.logger:
+                self.logger.error(f"Failed to set backend {backend}: {e}")
+            show_error("Backend Error", f"Backend unavailable: {e}")
+            # Revert to API
+            self.selected_backend_var.set("api")
+            self._on_backend_changed()
+        
+        self._update_cli_status()
+    
+    def _on_model_changed(self, event=None):
+        """Handle model selection change."""
+        backend = self.selected_backend_var.get()
+        model = self.selected_model_var.get()
+        
+        if backend == "api":
+            try:
+                set_backend(backend, model)
+                if hasattr(self, 'logger') and self.logger:
+                    self.logger.info(f"Model changed to: {model}")
+            except Exception as e:
+                if hasattr(self, 'logger') and self.logger:
+                    self.logger.error(f"Failed to set model {model}: {e}")
+    
+    def _update_cli_status(self):
+        """Update the CLI availability status indicator."""
+        try:
+            cli_status = check_cli_availability()
+            available = [name for name, avail in cli_status.items() if avail]
+            if available:
+                self.cli_status_label.config(
+                    text=f"CLI: {', '.join(available)}",
+                    foreground="green"
+                )
+            else:
+                self.cli_status_label.config(
+                    text="No CLI tools detected",
+                    foreground="gray"
+                )
+        except Exception:
+            self.cli_status_label.config(text="", foreground="gray")
 
     def generate_story(self):
         """

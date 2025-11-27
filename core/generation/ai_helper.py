@@ -1,125 +1,209 @@
 # ai_helper.py
 # https://platform.openai.com/docs/models
+#
+# This module provides backward-compatible LLM access for NovelWriter.
+# It now uses the unified llm_interface module under the hood, which supports:
+# - API backends (OpenAI, Gemini, Claude)
+# - CLI backends (Codex, Gemini CLI, Claude CLI)
 
-from openai import OpenAI
 import os
+from typing import Optional
 from dotenv import load_dotenv
-import google.generativeai as genai
-import anthropic
+
+# Import from the new unified interface
+from .llm_interface import (
+    initialize_llm,
+    send_prompt as llm_send_prompt,
+    send_prompt_with_retry as llm_send_prompt_with_retry,
+    get_available_backends,
+    get_current_backend,
+    is_initialized,
+    check_cli_availability,
+)
+from .llm_interface.multi_provider_llm import (
+    get_supported_models as get_api_models,
+    send_prompt_openai,
+    send_prompt_gemini,
+    send_prompt_claude,
+)
 
 
 load_dotenv()  # This will load environment variables from the .env file
 
-# Create an OpenAI client instance
-# Ensure you've set your OpenAI API key
-client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY"),
-)
 
-# Adding the possibility of using the Gemini API
-g_api_key = os.environ.get("GEMINI_API_KEY")
-genai.configure(api_key=g_api_key)
+# --- Backend State ---
+# Note: The actual backend state is managed by llm_interface module.
+# We keep _current_model here for API backend model selection.
+_current_model: str = "gpt-4o"  # Default model for API backend
 
-# Create an Anthropic client instance for Claude models
-anthropic_client = anthropic.Anthropic(
-    api_key=os.environ.get("CLAUDE_API_KEY"),
-)
 
-# --- Define Model Configurations ---
-# Define configurations for each model
-_model_config = { # Renamed to avoid potential naming conflicts if imported directly
-    "gpt-4o": lambda prompt: send_prompt_oai(
+def set_backend(backend: str, model: str = "gpt-4o") -> None:
+    """Set the LLM backend to use.
+    
+    Args:
+        backend: Backend identifier ("api", "codex", "gemini-cli", "claude-cli")
+        model: Model to use (only applies to "api" backend)
+    """
+    global _current_model
+    _current_model = model
+    initialize_llm(backend=backend, model=model)
+
+
+def get_backend() -> str:
+    """Get the current backend name."""
+    # Use the llm_interface module's state (single source of truth)
+    return get_current_backend() or "api"
+
+
+def get_model() -> str:
+    """Get the current model name (for API backend)."""
+    return _current_model
+
+
+# --- Model Configuration (Backward Compatibility) ---
+# These are the models available via the API backend
+_model_config = {
+    "gpt-4o": lambda prompt: send_prompt_openai(
         prompt=prompt,
         model="gpt-4o",
         max_tokens=16384,
         temperature=0.7,
         role_description="You are an expert storyteller focused on character relationships."
     ),
-    #"o1": lambda prompt: send_prompt_o1(prompt, model="o1"), # Assuming these are placeholders or deprecated
-    #"o1-mini": lambda prompt: send_prompt_o1(prompt, model="o1-mini"),
-    "o3": lambda prompt: send_prompt_o1(prompt, model="o3"),
-    "o4-mini": lambda prompt: send_prompt_o1(prompt, model="o4-mini"),
-    "gpt-5-2025-08-07": lambda prompt: send_prompt_o1(prompt, model="gpt-5-2025-08-07"),
-    #"gpt-4-turbo": lambda prompt: send_prompt_oai( # Added gpt-4-turbo if supported by send_prompt_oai
-    #    prompt=prompt,
-    #    model="gpt-4-turbo",
-    #    max_tokens=8192, # Example token limit
-    #    temperature=0.7,
-    #    role_description="You are a helpful fiction writing assistant."
-    #),
-    #"gemini-1.5-pro-latest": lambda prompt: send_prompt_gemini( # Renamed key to match main.py example
-    #    prompt=prompt,
-    #    model_name="gemini-1.5-pro-latest", # Use the correct API model name here
-    #    max_output_tokens=8192,
-    #    temperature=0.7,
-    #    top_p=1,
-    #    top_k=40
-    #),
-    #"gemini-2.0-pro-exp-02-05": lambda prompt: send_prompt_gemini( # Keep if needed
-    #     prompt=prompt,
-    #     model_name="gemini-2.0-pro-exp-02-05",
-    #     max_output_tokens=8192,
-    #     temperature=0.7,
-    #     top_p=1,
-    #     top_k=40
-    #),
-    "gemini-2.5-pro-exp-03-25": lambda prompt: send_prompt_gemini( # Keep if needed
+    "o3": lambda prompt: send_prompt_openai_reasoning(prompt, model="o3"),
+    "o4-mini": lambda prompt: send_prompt_openai_reasoning(prompt, model="o4-mini"),
+    "gpt-5-2025-08-07": lambda prompt: send_prompt_openai_reasoning(prompt, model="gpt-5-2025-08-07"),
+    "gemini-2.5-pro-exp-03-25": lambda prompt: send_prompt_gemini(
          prompt=prompt,
          model_name="gemini-2.5-pro-exp-03-25",
          max_output_tokens=8192,
          temperature=0.7,
     ),
-    #"claude-3-5-sonnet": lambda prompt: send_prompt_claude( # Keep if needed
-    #     prompt=prompt,
-    #     model="claude-3-5-sonnet-20241022",
-    #     max_tokens=4096,
-    #     temperature=1.0
-    #),
-    #"claude-3-7-sonnet": lambda prompt: send_prompt_claude( # Keep if needed
-    #     prompt=prompt,
-    #     model="claude-3-7-sonnet-20250219",
-    #     max_tokens=4096,
-    #     temperature=0.7
-    #),
-    "claude-4-5-sonnet": lambda prompt: send_prompt_claude( # Keep if needed
+    "claude-4-5-sonnet": lambda prompt: send_prompt_claude(
          prompt=prompt,
          model="claude-sonnet-4-5-20250929",
          max_tokens=8192,
          temperature=0.7
     ),
 }
-# --- End Model Configurations ---
+
 
 def get_supported_models():
-    """Returns a list of supported model names."""
+    """Returns a list of supported model names for the API backend."""
     return list(_model_config.keys())
 
+
 def send_prompt(prompt, model="gpt-4o"):
-    """Sends a prompt to the specified AI model."""
-    # Check if the model is supported
+    """Sends a prompt to the specified AI model.
+    
+    This function routes to the appropriate backend based on current settings.
+    For API backend, it uses the model parameter.
+    For CLI backends, it uses the configured CLI tool.
+    
+    Args:
+        prompt: The text prompt to send.
+        model: Model name (used for API backend, ignored for CLI backends).
+        
+    Returns:
+        Generated text from the LLM.
+    """
+    global _current_model
+    
+    # Get current backend from the unified interface (single source of truth)
+    current_backend = get_backend()
+    
+    # If using a CLI backend, use the unified interface directly
+    if current_backend != "api":
+        if not is_initialized():
+            initialize_llm(backend=current_backend)
+        print(f"Using CLI backend: {current_backend}")
+        return llm_send_prompt(prompt)
+    
+    # For API backend, use the model registry
     if model not in _model_config:
-        # Try adding '-latest' if applicable (e.g., for gemini-1.5-pro)
+        # Try adding '-latest' if applicable
         if f"{model}-latest" in _model_config:
              model = f"{model}-latest"
         else:
              supported_models = get_supported_models()
              raise ValueError(f"Unsupported model: {model}. Supported models are: {supported_models}")
 
-
     print(f"Attempting to use model: {model}")
-    # Call the corresponding function by looking up the dictionary
+    _current_model = model
+    
     try:
         return _model_config[model](prompt)
     except Exception as e:
         print(f"Error calling model '{model}': {e}")
-        # Optionally, implement fallback logic here or re-raise
-        raise # Re-raise the exception for now
+        raise
 
 
-# Send prompts with GPT4o and 4o-mini
-def send_prompt_oai(prompt, model="gpt-4o", max_tokens=1500, temperature=0.7,
+def send_prompt_with_retry(prompt, model="gpt-4o", max_retries=3):
+    """Send a prompt with automatic retry on failure.
+    
+    Args:
+        prompt: The text prompt to send.
+        model: Model name (used for API backend).
+        max_retries: Maximum number of retry attempts.
+        
+    Returns:
+        Generated text from the LLM.
+    """
+    last_error: Optional[Exception] = None
+    
+    for attempt in range(max_retries):
+        try:
+            return send_prompt(prompt, model=model)
+        except Exception as e:
+            last_error = e
+            print(f"Attempt {attempt + 1}/{max_retries} failed: {e}")
+            if attempt < max_retries - 1:
+                continue
+    
+    raise RuntimeError(
+        f"Model '{model}' failed after {max_retries} attempts. Last error: {last_error}"
+    )
+
+
+# --- Provider-specific functions (for backward compatibility) ---
+
+# Lazy-loaded clients
+_openai_client = None
+_anthropic_client = None
+_gemini_configured = False
+
+
+def _get_openai_client():
+    """Get or create OpenAI client."""
+    global _openai_client
+    if _openai_client is None:
+        from openai import OpenAI
+        _openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    return _openai_client
+
+
+def _get_anthropic_client():
+    """Get or create Anthropic client."""
+    global _anthropic_client
+    if _anthropic_client is None:
+        import anthropic
+        _anthropic_client = anthropic.Anthropic(api_key=os.environ.get("CLAUDE_API_KEY"))
+    return _anthropic_client
+
+
+def _ensure_gemini_configured():
+    """Configure Gemini if not already done."""
+    global _gemini_configured
+    if not _gemini_configured:
+        import google.generativeai as genai
+        genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+        _gemini_configured = True
+
+
+def send_prompt_oai(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7,
                 role_description="You are a helpful fiction writing assistant. You will create original text only."):
-    # Make the chat completion request using the OpenAI client
+    """Send prompts with GPT-4o and similar models."""
+    client = _get_openai_client()
     response = client.chat.completions.create(
         messages=[
             {"role": "system", "content": role_description},
@@ -129,50 +213,32 @@ def send_prompt_oai(prompt, model="gpt-4o", max_tokens=1500, temperature=0.7,
         max_tokens=max_tokens,
         temperature=temperature,
     )
-
     print("model used: ", model)
-    # Extract the generated text from the response
-    content = response.choices[0].message.content
+    return response.choices[0].message.content
 
-    return content
 
-# Send prompts with o1 models
-# model="o1-preview"
-# model="o1-mini",
-def send_prompt_o1(prompt, model="o1-mini"):
+def send_prompt_openai_reasoning(prompt, model="o3"):
+    """Send prompts with OpenAI reasoning models (o1, o3, o4-mini, etc.)."""
+    client = _get_openai_client()
     response = client.chat.completions.create(
         model=model,
-        messages=[
-            {
-            "role": "user",
-            "content": prompt
-            }
-        ]
+        messages=[{"role": "user", "content": prompt}]
     )
-
     print("Used model: ", model)
-    content = response.choices[0].message.content
-
-    return content
+    return response.choices[0].message.content
 
 
-def send_prompt_gemini(prompt, model_name="gemini-1.5-pro", max_output_tokens=1024, temperature=0.9, top_p=1, top_k=1):
-    """
-    Sends a prompt to the Gemini API and returns the response.
+# Alias for backward compatibility
+send_prompt_o1 = send_prompt_openai_reasoning
 
-    Args:
-        prompt: The text prompt to send.
-        model_name: The name of the Gemini model to use (e.g., "gemini-pro").
-        max_output_tokens: The maximum number of tokens to generate.
-        temperature: Controls the randomness of the output.
-        top_p: Controls the diversity of the output.
-        top_k: Controls the diversity of the output (similar to top_p).
-    Returns:
-        The generated text, or None if there was an error.
-    """
 
+def send_prompt_gemini_direct(prompt, model_name="gemini-2.5-pro-exp-03-25", max_output_tokens=8192, 
+                              temperature=0.7, top_p=1, top_k=1):
+    """Send a prompt to the Gemini API directly."""
+    _ensure_gemini_configured()
+    import google.generativeai as genai
+    
     model = genai.GenerativeModel(model_name)
-
     generation_config = genai.types.GenerationConfig(
         max_output_tokens=max_output_tokens,
         temperature=temperature,
@@ -180,54 +246,33 @@ def send_prompt_gemini(prompt, model_name="gemini-1.5-pro", max_output_tokens=10
         top_k=top_k
     )
 
-
     try:
         response = model.generate_content(
             prompt,
             generation_config=generation_config,
             stream=False
         )
-
-        print("Used model: ", model)
-
+        print("Used model: ", model_name)
         return response.text
     except Exception as e:
         print(f"Error generating content: {e}")
         return None
 
 
-def send_prompt_claude(prompt, model="claude-4-5-sonnet-20250929", max_tokens=4096, temperature=0.7,
-                     role_description="You are a skilled creative writer focused on producing original fiction."):
-    """
-    Sends a prompt to Anthropic's Claude API and returns the generated text.
-    
-    Args:
-        prompt: The text prompt to send.
-        model: The Claude model to use (e.g., "claude-3-opus-20240229").
-        max_tokens: Maximum number of tokens to generate.
-        temperature: Controls randomness of generations.
-        role_description: System prompt that sets the context for the model.
-        
-    Returns:
-        The generated text, or None if there was an error.
-    """
+def send_prompt_claude_direct(prompt, model="claude-sonnet-4-5-20250929", max_tokens=8192, temperature=0.7,
+                              role_description="You are a skilled creative writer focused on producing original fiction."):
+    """Send a prompt to Anthropic's Claude API directly."""
     try:
-        # Create a message with system and user content
-        response = anthropic_client.messages.create(
+        client = _get_anthropic_client()
+        response = client.messages.create(
             model=model,
             max_tokens=max_tokens,
             temperature=temperature,
             system=role_description,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
+            messages=[{"role": "user", "content": prompt}]
         )
-        
         print("Used model: ", model)
-        
-        # Extract the content from the response
         return response.content[0].text
-        
     except Exception as e:
         print(f"Error generating content with Claude: {e}")
         return None

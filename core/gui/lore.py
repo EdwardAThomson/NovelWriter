@@ -2,7 +2,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from core.gui.notifications import show_success, show_error, show_warning
-from core.generation.ai_helper import send_prompt
+from core.generation.ai_helper import send_prompt, get_backend
 # from core.generation.rag_helper import upsert_text
 import json
 import os
@@ -800,7 +800,9 @@ class Lore:
 
             # 5. Send to LLM
             log_msg_prompt_source = f"(from {title_prompt_filepath})" if title_prompt_filepath else "(from memory, save failed)"
-            self.app.logger.info(f"Sending title suggestion prompt {log_msg_prompt_source} to LLM ({selected_model})...")
+            current_backend = get_backend()
+            backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
+            self.app.logger.info(f"Sending title suggestion prompt {log_msg_prompt_source} to LLM (backend: {backend_info})...")
             suggested_titles_text = send_prompt(title_prompt_content, model=selected_model)
 
             if not suggested_titles_text:
@@ -994,7 +996,9 @@ class Lore:
 
                 # Send prompt to LLM
                 log_msg_prompt_source = f"(from {prompt_filepath})" if prompt_filepath else "(from memory, save failed)"
-                self.app.logger.info(f"Sending backstory prompt for {char_name} {log_msg_prompt_source} to LLM ({selected_model})...")
+                current_backend = get_backend()
+                backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
+                self.app.logger.info(f"Sending backstory prompt for {char_name} {log_msg_prompt_source} to LLM (backend: {backend_info})...")
                 response = send_prompt(prompt, model=selected_model)
 
                 if not response:

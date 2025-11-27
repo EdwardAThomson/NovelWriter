@@ -2,7 +2,7 @@
 
 ## Description
 
-NovelWriter is a comprehensive Python application designed to assist authors in writing novels and short stories across **multiple genres** by leveraging Large Language Models (LLMs). It provides a GUI-based interface built with Tkinter for managing novel parameters, generating universe lore, outlining story structure, planning scenes, and writing chapter prose. The application now features an advanced agentic framework with multi-agent orchestration and a multi-level review system for quality control.
+NovelWriter is a comprehensive Python application designed to assist authors in writing novels and short stories across **multiple genres** by leveraging Large Language Models (LLMs). It provides a GUI-based interface built with Tkinter for managing novel parameters, generating universe lore, outlining story structure, planning scenes, and writing chapter prose. The application now features an advanced agentic framework with multi-agent orchestration and a multi-level review system for quality control, plus a unified multi-backend LLM interface that can route requests to either hosted APIs or local CLI tools.
 
 🎥 YouTube - NovelWriter Dev Videos:
 
@@ -25,7 +25,7 @@ Each genre features specialized faction generation, character creation, and worl
 
 ![Screenshot of NovelWriter](./screenshots/first_screen.png)
 
-The application features a dynamic LLM model selector, allowing users to choose from various supported models for different generation tasks. Currently configured models include:
+The application features a dynamic LLM model and backend selector, allowing users to choose between **API backends** and **local CLI tools**, and to pick specific models for API usage. Currently configured models include:
 
 *   OpenAI GPT-5, GPT-4o, o3, o4-mini
 *   Claude 4.5 Sonnet
@@ -38,6 +38,14 @@ Deprecated models:
 *   Claude 3.5, 3.7 Sonnet
 
 Running this code requires API keys for the specific LLMs you intend to use (e.g., an **OpenAI API key** for GPT models, a **Google AI API key** for Gemini models, **Anthropic API Key** for Claude models). These keys should be stored in a `.env` file in the project's root directory.
+
+In addition, NovelWriter can talk to several **local CLI tools** via a unified LLM interface:
+
+- `codex` — Codex CLI providing zero-cost GPT-5 style completions
+- `gemini` — Gemini CLI for local access to Gemini 2.5 models
+- `claude` — Claude Code CLI for local Claude-style completions
+
+If these binaries are available on your `PATH`, NovelWriter can route LLM traffic through them instead of the hosted APIs, letting you mix and match cost, latency, and capability per project.
 
 Full automation is available, however the outputs can also serve as a starting point that can be further refined by the author.
 
@@ -57,6 +65,8 @@ Full automation is available, however the outputs can also serve as a starting p
 - **Multi-Level Review System**: Scene, chapter, and batch-level quality analysis with trend tracking
 - **Automated Chapter Writing**: Complete automation of chapter writing with quality control
 - **Quality Analytics**: Advanced quality trend analysis with configurable thresholds and dashboards
+- **Multi-Backend LLM Interface**: Unified interface for API backends and local CLI tools (Codex, Gemini, Claude)
+- **Backend & Model Selector UI**: Top-level GUI controls to switch between API vs CLI backends and choose specific API models at runtime
 
 ## Quick Start
 
