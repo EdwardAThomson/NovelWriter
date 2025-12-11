@@ -4,11 +4,14 @@
 
 NovelWriter is a comprehensive Python application designed to assist authors in writing novels and short stories across **multiple genres** by leveraging Large Language Models (LLMs). It provides a GUI-based interface built with Tkinter for managing novel parameters, generating universe lore, outlining story structure, planning scenes, and writing chapter prose. The application now features an advanced agentic framework with multi-agent orchestration and a multi-level review system for quality control, plus a unified multi-backend LLM interface that can route requests to either hosted APIs or local CLI tools.
 
+If you are keen to see an alternative approach to NovelWriter, check out [StoryDaemon on GitHub](https://github.com/EdwardAThomson/StoryDaemon).
+
 🎥 YouTube - NovelWriter Dev Videos:
 
 * [I Built An App To Write 100,000 Word Novels (Using AI)](https://youtu.be/7moN7PCRUpk)
 * [Do LLMs suck at creative writing? I analyzed their responses to find the best one](https://youtu.be/viOgoXF4MDQ)
 * [Attempting to avoid/ fix poor randomness in LLM outputs](https://www.youtube.com/watch?v=MtnDiqZVCkk)
+* [AI Creative Writing with Agentic Workflows](https://youtu.be/_X8hepfZsTA)
 
 **🎯 Supported Genres:**
 
