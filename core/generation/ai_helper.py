@@ -79,9 +79,21 @@ _model_config = {
          max_output_tokens=8192,
          temperature=0.7,
     ),
+    "gemini-3-pro-preview": lambda prompt: send_prompt_gemini(
+         prompt=prompt,
+         model_name="gemini-3-pro-preview",
+         max_output_tokens=8192,
+         temperature=0.7,
+    ),
     "claude-4-5-sonnet": lambda prompt: send_prompt_claude(
          prompt=prompt,
          model="claude-sonnet-4-5-20250929",
+         max_tokens=8192,
+         temperature=0.7
+    ),
+    "claude-4-5-opus": lambda prompt: send_prompt_claude(
+         prompt=prompt,
+         model="claude-opus-4-5",
          max_tokens=8192,
          temperature=0.7
     ),
