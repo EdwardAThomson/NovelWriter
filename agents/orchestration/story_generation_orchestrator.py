@@ -487,6 +487,21 @@ class StoryGenerationOrchestrator(BaseAgent):
         """Check if the expected output files exist for a step."""
         expected_patterns = self.state_manager.get_expected_file_patterns().get(step_name, [])
         
+        # For the structure step, we want to be more specific. 
+        # suggested_titles.md now belongs to lore, but structure needs its primary files.
+        if step_name == "structure":
+            # Primary files for structure
+            primary_patterns = [
+                "story/structure/character_arcs.md",
+                "story/structure/faction_arcs.md",
+                "story/structure/story_structure.json"
+            ]
+            for pattern in primary_patterns:
+                files = self.dir_manager.glob_files(pattern)
+                if files:
+                    return True
+            return False
+            
         for pattern in expected_patterns:
             files = self.dir_manager.glob_files(pattern)
             if files:

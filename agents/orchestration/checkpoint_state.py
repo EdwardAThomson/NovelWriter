@@ -64,12 +64,12 @@ class CheckpointStateManager:
                 "story/lore/characters.json",
                 "story/lore/factions.json", 
                 "story/lore/generated_lore.md",
-                "story/lore/background_*.md"  # Character backstories
+                "story/lore/background_*.md",  # Character backstories
+                "story/planning/suggested_titles.md"  # Title suggestions
             ],
             "structure": [
                 "story/structure/*.md",  # All structure files including 6-act, character arcs, etc.
-                "story/planning/reconciled_locations_arcs.md",  # Final arcs with locations
-                "story/planning/suggested_titles.md"  # Title suggestions
+                "story/planning/reconciled_locations_arcs.md"  # Final arcs with locations
             ],
             "scenes": [
                 "story/planning/detailed_scene_plans/scenes_*.md",  # Detailed scene plans (long-form)

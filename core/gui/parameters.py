@@ -382,8 +382,14 @@ class Parameters:
             "author_name": self.author_var.get(),
             "theme": self.theme_var.get(),
             "tone": self.tone_var.get(),
-            # "gender_generation_bias": self.gender_bias_var.get() # Old way
         }
+
+        # Include Backend and Model if app instance is available
+        if self.app:
+            if hasattr(self.app, 'selected_backend_var'):
+                params["backend"] = self.app.selected_backend_var.get()
+            if hasattr(self.app, 'selected_model_var'):
+                params["model"] = self.app.selected_model_var.get()
         
         # Resolve gender bias string to percentages
         selected_bias_string = self.gender_bias_var.get()
@@ -441,7 +447,8 @@ class Parameters:
         
         # Define the order for saving - include core params first
         param_order = ["Output Directory", "Genre", "Subgenre", "Story Length", "Story Structure", 
-                       "Novel Title", "Author Name", "Theme", "Tone", "Gender Generation Bias String"] # Use the string for saving
+                       "Novel Title", "Author Name", "Theme", "Tone", "Gender Generation Bias String",
+                       "Backend", "Model"] # Persist Model selection
         
         output_lines = []
         # Add ordered core params
@@ -476,12 +483,12 @@ class Parameters:
 
     def load_parameters(self):
         # Check for parameters file in new structured directory first, then fall back to old location
-        default_dir = "current_work"
+        current_dir = self.output_dir_var.get()
         
         # Option 1: New structured path
-        structured_filepath = os.path.join(default_dir, "system", "parameters.txt")
+        structured_filepath = os.path.join(current_dir, "system", "parameters.txt")
         # Option 2: Old flat path (fallback)
-        flat_filepath = os.path.join(default_dir, "parameters.txt")
+        flat_filepath = os.path.join(current_dir, "parameters.txt")
         
         # Determine which file to use
         if os.path.exists(structured_filepath):
@@ -510,7 +517,7 @@ class Parameters:
 
         # --- Load Core Parameters ---
         # Load output directory FIRST if available
-        self.output_dir_var.set(loaded_params.get("Output Directory", default_dir))
+        self.output_dir_var.set(loaded_params.get("Output Directory", current_dir))
 
         self.genre_var.set(loaded_params.get("Genre", "Sci-Fi"))
         self.populate_subgenres() # IMPORTANT: Update subgenres before setting subgenre var
@@ -525,6 +532,25 @@ class Parameters:
         self.theme_var.set(loaded_params.get("Theme", ""))
         self.tone_var.set(loaded_params.get("Tone", ""))
         self.gender_bias_var.set(loaded_params.get("Gender Generation Bias String", self.gender_bias_options[0]))
+
+        # --- Load Backend/Model Preferences ---
+        if self.app:
+            backend_loaded = False
+            if "Backend" in loaded_params:
+                self.app.selected_backend_var.set(loaded_params["Backend"])
+                backend_loaded = True
+            
+            if "Model" in loaded_params:
+                # Ensure the model exists in the available models list
+                loaded_model = loaded_params["Model"]
+                if hasattr(self.app, 'available_models') and loaded_model in self.app.available_models:
+                    self.app.selected_model_var.set(loaded_model)
+                else:
+                    self.logger.warning(f"Loaded model '{loaded_model}' not in available list. Ignoring.")
+            
+            if backend_loaded:
+                # Trigger the backend change to update ai_helper and UI visibility
+                self.app._on_backend_changed()
 
         # --- Load Dynamic Parameters ---
         # This needs to happen AFTER dynamic tabs are potentially recreated by subgenre change
