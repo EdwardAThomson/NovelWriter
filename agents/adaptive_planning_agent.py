@@ -38,7 +38,7 @@ class ArcProposal:
 class AdaptivePlanningAgent(BaseAgent):
     """Agent for dynamic story arc adjustment and planning."""
     
-    def __init__(self, model: str = "gpt-4o", logger: Optional[logging.Logger] = None):
+    def __init__(self, model: Optional[str] = None, logger: Optional[logging.Logger] = None):
         super().__init__(name="AdaptivePlanningAgent", model=model, logger=logger)
         self.analysis_history: List[Dict] = []
         

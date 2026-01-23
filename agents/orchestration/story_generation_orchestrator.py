@@ -82,7 +82,7 @@ class StoryGenerationOrchestrator(BaseAgent):
     5. Enabling iterative improvement
     """
     
-    def __init__(self, model: str = "gpt-4o", output_dir: str = "current_work",
+    def __init__(self, model: Optional[str] = None, output_dir: str = "current_work",
                  logger: Optional[logging.Logger] = None, use_new_structure: bool = True):
         super().__init__(name="StoryGenerationOrchestrator", model=model, logger=logger)
         

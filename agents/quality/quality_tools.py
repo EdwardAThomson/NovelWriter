@@ -45,7 +45,7 @@ class QualityMetrics:
 class AnalyzeCoherenceTool(BaseTool):
     """Tool to analyze chapter coherence and logical flow."""
     
-    def __init__(self, model: str = "gpt-4o"):
+    def __init__(self, model: Optional[str] = None):
         super().__init__(
             name="analyze_coherence",
             description="Analyze the logical coherence and flow of a chapter or scene",
@@ -182,7 +182,7 @@ Focus on specific, actionable feedback that can help improve the content.
 class AnalyzePacingTool(BaseTool):
     """Tool to analyze story pacing and rhythm."""
     
-    def __init__(self, model: str = "gpt-4o"):
+    def __init__(self, model: Optional[str] = None):
         super().__init__(
             name="analyze_pacing",
             description="Analyze the pacing and rhythm of story content",
@@ -331,7 +331,7 @@ Provide analysis in JSON format:
 class EvaluateProseQualityTool(BaseTool):
     """Tool to evaluate prose quality and style."""
     
-    def __init__(self, model: str = "gpt-4o"):
+    def __init__(self, model: Optional[str] = None):
         super().__init__(
             name="evaluate_prose_quality",
             description="Evaluate the quality of prose writing including style, clarity, and engagement",

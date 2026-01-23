@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import logging
 import json
+from core.generation.ai_helper import get_model, get_backend
 
 
 @dataclass
@@ -49,14 +50,16 @@ class BaseAgent(ABC):
     to accomplish well-defined tasks with clear success criteria.
     """
     
-    def __init__(self, name: str, model: str = "gpt-4o", logger: Optional[logging.Logger] = None):
+    def __init__(self, name: str, model: Optional[str] = None, logger: Optional[logging.Logger] = None):
         self.name = name
-        self.model = model
+        self.model = model or get_model()
         self.logger = logger or logging.getLogger(f"agent.{name}")
         self.available_tools = []
         self.metrics = {}
         
-        self.logger.info(f"Initialized {self.name} agent with model {self.model}")
+        current_backend = get_backend()
+        backend_info = f"{current_backend}" if current_backend != "api" else f"api/{self.model}"
+        self.logger.info(f"Initialized {self.name} agent with LLM ({backend_info})")
     
     @abstractmethod
     def get_available_tools(self) -> List[str]:

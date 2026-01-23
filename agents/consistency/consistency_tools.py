@@ -61,7 +61,7 @@ class PlotThread:
 class ValidateCharacterConsistencyTool(BaseTool):
     """Tool to validate character consistency across chapters."""
     
-    def __init__(self, model: str = "gpt-4o"):
+    def __init__(self, model: Optional[str] = None):
         super().__init__(
             name="validate_character_consistency",
             description="Validate character traits, behavior, and development consistency",
@@ -254,7 +254,7 @@ Provide analysis in JSON format:
 class TrackWorldBuildingTool(BaseTool):
     """Tool to track and validate world-building elements."""
     
-    def __init__(self, model: str = "gpt-4o"):
+    def __init__(self, model: Optional[str] = None):
         super().__init__(
             name="track_world_building",
             description="Track and validate world-building elements and rules",
@@ -369,7 +369,7 @@ Provide analysis in JSON format:
 class TrackPlotThreadsTool(BaseTool):
     """Tool to track and manage plot threads."""
     
-    def __init__(self, model: str = "gpt-4o"):
+    def __init__(self, model: Optional[str] = None):
         super().__init__(
             name="track_plot_threads",
             description="Track ongoing plot threads and their resolution",

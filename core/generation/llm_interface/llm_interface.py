@@ -60,7 +60,7 @@ def initialize_llm(
     codex_bin: str = "codex",
     gemini_bin: str = "gemini",
     claude_bin: str = "claude",
-    model: str = "gpt-4o",
+    model: Optional[str] = None,
 ) -> LLMClient:
     """Initialize the LLM client for the given backend.
 
@@ -90,7 +90,8 @@ def initialize_llm(
         _current_backend = "codex"
     elif backend_normalized in {"gemini-cli", "gemini"}:
         # Use Gemini-appropriate model, not the API default
-        gemini_model = model if model.startswith("gemini") else "gemini-2.5-pro"
+        effective_model = model or "gemini-2.5-pro"
+        gemini_model = effective_model if effective_model.startswith("gemini") else "gemini-2.5-pro"
         _llm_client = GeminiCliInterface(model=gemini_model, gemini_bin=gemini_bin)
         _current_backend = "gemini-cli"
     elif backend_normalized in {"claude-cli", "claude"}:

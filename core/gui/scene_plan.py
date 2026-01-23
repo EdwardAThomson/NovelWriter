@@ -1,6 +1,6 @@
 from tkinter import ttk, messagebox
 from core.gui.notifications import show_success, show_error, show_warning
-from core.generation.ai_helper import send_prompt
+from core.generation.ai_helper import send_prompt, get_backend
 import re
 from core.generation.helper_fns import open_file, write_file, save_prompt_to_file
 import os
@@ -177,7 +177,9 @@ class ScenePlanning:
                     f"Please provide the output in markdown format. Do not use backticks or the word 'markdown' in the response."
                 )
 
-                print(f"--- Chapter Outline Prompt for {current_section_name} (Starts Chapter {chapter_number_offset}) ---")
+                current_backend = get_backend()
+                backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
+                print(f"--- Chapter Outline Prompt for {current_section_name} (Starts Chapter {chapter_number_offset}, Backend: {backend_info}) ---")
                 # print(prompt) # Uncomment for debugging full prompt
                 print("----------------------------------------------------------------")
                 response = send_prompt(prompt, model=selected_model)
@@ -309,7 +311,9 @@ class ScenePlanning:
                         f"Your response should be in well-structured markdown with headings for each scene."
                     )
 
-                    print(f"--- Scene Plan Prompt for Chapter {current_chapter_for_prompt} (Section: {current_section_name}) ---")
+                    current_backend = get_backend()
+                    backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
+                    print(f"--- Scene Plan Prompt for Chapter {current_chapter_for_prompt} (Section: {current_section_name}, Backend: {backend_info}) ---")
                     # print(prompt) # Uncomment for full prompt debugging
                     print("-------------------------------------------------------------------")
                     response = send_prompt(prompt, model=selected_model)
@@ -437,8 +441,10 @@ class ScenePlanning:
                     prompt_base_name = f"plan_scenes_ch{current_chapter_for_prompt}_{safe_selected_structure_name}_{safe_section_name}_prompt"
                     prompt_filepath = save_prompt_to_file(output_dir, prompt_base_name, prompt) # Assuming save_prompt_to_file is imported
                     
+                    current_backend = get_backend()
+                    backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
                     log_msg_source = f"(from {prompt_filepath})" if prompt_filepath else "(from memory, save failed)"
-                    self.app.logger.info(f"Sending Scene Planning Prompt {log_msg_source} to LLM ({selected_model})...")
+                    self.app.logger.info(f"Sending Scene Planning Prompt {log_msg_source} to LLM ({backend_info})...")
 
                     response = send_prompt(prompt, model=selected_model)
 
@@ -548,13 +554,15 @@ class ScenePlanning:
         prompt_base_name = f"plan_scenes_short_story_{safe_structure_name_for_file}_prompt"
         prompt_filepath = save_prompt_to_file(output_dir, prompt_base_name, prompt)
         
+        current_backend = get_backend()
+        backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
         log_msg_source = f"(from {prompt_filepath})" if prompt_filepath else "(from memory, save failed)"
-        self.app.logger.info(f"Sending Short Story Scene Planning Prompt {log_msg_source} to LLM ({selected_model})...")
+        self.app.logger.info(f"Sending Short Story Scene Planning Prompt {log_msg_source} to LLM ({backend_info})...")
 
         response = send_prompt(prompt, model=selected_model)
 
         if not response:
-            self.app.logger.error(f"Failed to generate short story scenes from LLM ({selected_model}). No response.")
+            self.app.logger.error(f"Failed to generate short story scenes from LLM ({backend_info}). No response.")
             show_error("Error", "Failed to generate short story scenes from LLM.")
             return
         

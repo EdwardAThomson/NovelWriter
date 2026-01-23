@@ -50,7 +50,7 @@ class MultiAgentOrchestrator(BaseAgent):
     5. Synthesizing results from multiple agents
     """
     
-    def __init__(self, model: str = "gpt-4o", output_dir: str = "current_work",
+    def __init__(self, model: Optional[str] = None, output_dir: str = "current_work",
                  logger: Optional[logging.Logger] = None):
         super().__init__(name="MultiAgentOrchestrator", model=model, logger=logger)
         

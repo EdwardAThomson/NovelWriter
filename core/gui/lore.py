@@ -688,11 +688,13 @@ class Lore:
                 return False # Stop if we can't save the prompt
 
             # --- Step 4: Send the enhanced prompt to the LLM ---
-            self.app.logger.info(f"Sending main lore prompt from {main_lore_prompt_filepath} to LLM ({selected_model})...")
+            current_backend = get_backend()
+            backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
+            self.app.logger.info(f"Sending main lore prompt from {main_lore_prompt_filepath} to LLM ({backend_info})...")
             lore_text = send_prompt(prompt, model=selected_model)
             
             if not lore_text:
-                self.app.logger.error(f"Failed to generate lore from LLM ({selected_model}). Received no response.")
+                self.app.logger.error(f"Failed to generate lore from LLM ({backend_info}). Received no response.")
                 show_error("Error", "Lore generation failed (LLM).")
                 return False
             

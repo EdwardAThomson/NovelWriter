@@ -39,7 +39,7 @@ class ReviewAndRetryAgent(BaseAgent):
     - Conservative thresholds to avoid false positives
     """
     
-    def __init__(self, model: str = "gpt-4o", logger: Optional[logging.Logger] = None):
+    def __init__(self, model: Optional[str] = None, logger: Optional[logging.Logger] = None):
         super().__init__(name="ReviewAndRetryAgent", model=model, logger=logger)
         
         # Conservative thresholds - only flag obvious issues

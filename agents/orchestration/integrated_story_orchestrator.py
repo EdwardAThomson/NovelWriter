@@ -49,7 +49,7 @@ class IntegratedStoryOrchestrator(BaseAgent):
     5. Adds agentic validation and quality control
     """
     
-    def __init__(self, app_instance, model: str = "gpt-4o", 
+    def __init__(self, app_instance, model: Optional[str] = None, 
                  logger: Optional[logging.Logger] = None):
         super().__init__(name="IntegratedStoryOrchestrator", model=model, logger=logger)
         

@@ -19,6 +19,7 @@ from dataclasses import dataclass, asdict
 
 from agents.base.agent import BaseAgent, AgentResult
 from core.generation.helper_fns import open_file, write_file, read_json
+from core.generation.ai_helper import send_prompt, get_backend
 from core.config.directory_config import get_directory_manager
 from core.gui.parameters import STRUCTURE_SECTIONS_MAP
 
@@ -809,10 +810,13 @@ class ChapterWritingAgent(BaseAgent):
                 self.logger.warning(f"Could not save prompt to file: {e}")
             
             # Call the genuine NovelWriter AI helper
+            current_backend = get_backend()
+            backend_info = f"{current_backend}" if current_backend != "api" else f"api/{model}"
+            
             if is_short_story:
-                self.logger.info(f"Generating prose for Scene {scene_num} of short story using model {model}")
+                self.logger.info(f"Generating prose for Scene {scene_num} of short story using LLM ({backend_info})")
             else:
-                self.logger.info(f"Generating prose for Chapter {chapter_num}, Scene {scene_num} using model {model}")
+                self.logger.info(f"Generating prose for Chapter {chapter_num}, Scene {scene_num} using LLM ({backend_info})")
                 
             response = send_prompt(prompt, model=model)
             

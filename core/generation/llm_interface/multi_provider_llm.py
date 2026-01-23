@@ -106,7 +106,7 @@ def _ensure_gemini_configured():
 
 def send_prompt_openai(
     prompt: str,
-    model: str = "gpt-4o",
+    model: Optional[str] = None,
     max_tokens: int = 16384,
     temperature: float = 0.7,
     role_description: str = (
@@ -115,6 +115,8 @@ def send_prompt_openai(
 ) -> str:
     """Send a prompt to the OpenAI Chat API."""
     client = _get_openai_client()
+    if model is None:
+        model = "gpt-4o"
     response = client.chat.completions.create(
         model=model,
         messages=[
@@ -232,11 +234,13 @@ def get_supported_models() -> List[str]:
     return list(_model_config.keys())
 
 
-def send_prompt(prompt: str, model: str = "gpt-4o", max_tokens: int = 16384) -> str:
+def send_prompt(prompt: str, model: Optional[str] = None, max_tokens: int = 16384) -> str:
     """Send a prompt using the configured model registry.
 
     If the model key is not found, tries a "-latest" suffix before failing.
     """
+    if model is None:
+        model = "gpt-4o"
     # Resolve model key
     if model not in _model_config:
         alt = f"{model}-latest"
@@ -256,11 +260,13 @@ def send_prompt(prompt: str, model: str = "gpt-4o", max_tokens: int = 16384) -> 
 
 def send_prompt_with_retry(
     prompt: str,
-    model: str = "gpt-4o",
+    model: Optional[str] = None,
     max_tokens: int = 16384,
     max_retries: int = 3,
 ) -> str:
     """Send a prompt with simple retry logic on failure."""
+    if model is None:
+        model = "gpt-4o"
     last_error: Optional[Exception] = None
 
     for attempt in range(max_retries):
@@ -284,8 +290,8 @@ class MultiProviderInterface:
     similar to the CLI interfaces.
     """
 
-    def __init__(self, model: str = "gpt-4o"):
-        self.model = model
+    def __init__(self, model: Optional[str] = None):
+        self.model = model or "gpt-4o"
 
     def generate(self, prompt: str, max_tokens: int = 16384, timeout: int = 120) -> str:
         # timeout is accepted for interface compatibility but not used directly

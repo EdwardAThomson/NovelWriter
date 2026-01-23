@@ -31,7 +31,7 @@ class QualityControlAgent(BaseAgent):
     4. Generate revision recommendations
     """
     
-    def __init__(self, model: str = "gpt-4o", logger: Optional[logging.Logger] = None):
+    def __init__(self, model: Optional[str] = None, logger: Optional[logging.Logger] = None):
         super().__init__(name="QualityControlAgent", model=model, logger=logger)
         
         # Initialize tool registry

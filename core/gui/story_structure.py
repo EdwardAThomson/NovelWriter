@@ -1,6 +1,6 @@
 from tkinter import ttk, messagebox
 from core.gui.notifications import show_success, show_error, show_warning
-from core.generation.ai_helper import send_prompt
+from core.generation.ai_helper import send_prompt, get_backend
 import re
 from core.generation.helper_fns import open_file, write_file, read_json, save_prompt_to_file
 import os
@@ -308,8 +308,10 @@ class StoryStructure:
                     self.app.logger.warning("Prompt content not logged directly due to length and save failure. Enable DEBUG for full prompt.")
 
             # Send to LLM
+            current_backend = get_backend()
+            backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
             log_msg_prompt_source = f"(from {prompt_filepath})" if prompt_filepath else "(from memory, save failed)"
-            self.app.logger.info(f"Sending prompt {log_msg_prompt_source} to LLM ({selected_model}) for character arc generation...")
+            self.app.logger.info(f"Sending prompt {log_msg_prompt_source} to LLM ({backend_info}) for character arc generation...")
             response = send_prompt(prompt, model=selected_model)
             
             if not response:
@@ -456,12 +458,14 @@ class StoryStructure:
                     self.app.logger.warning("Faction Arc Generation Prompt not logged directly. Enable DEBUG for full prompt.")
             
             # Send prompt 1 to LLM
+            current_backend = get_backend()
+            backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
             log_msg_prompt1_source = f"(from {prompt1_filepath})" if prompt1_filepath else "(from memory, save failed)"
-            self.app.logger.info(f"Sending Faction Arc Generation Prompt {log_msg_prompt1_source} to LLM ({selected_model})...")
+            self.app.logger.info(f"Sending Faction Arc Generation Prompt {log_msg_prompt1_source} to LLM ({backend_info})...")
             faction_arcs_response = send_prompt(prompt1, model=selected_model)
             
             if not faction_arcs_response:
-                self.app.logger.error(f"Failed to generate faction arcs from LLM ({selected_model}). No response.")
+                self.app.logger.error(f"Failed to generate faction arcs from LLM ({backend_info}). No response.")
                 show_error("Error", "Failed to generate faction arcs from LLM.")
                 return
             
@@ -499,12 +503,14 @@ class StoryStructure:
                     self.app.logger.warning("Arc Reconciliation Prompt not logged directly. Enable DEBUG for full prompt.")
             
             # Send prompt 2 to LLM
+            current_backend = get_backend()
+            backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
             log_msg_prompt2_source = f"(from {prompt2_filepath})" if prompt2_filepath else "(from memory, save failed)"
-            self.app.logger.info(f"Sending Arc Reconciliation Prompt {log_msg_prompt2_source} to LLM ({selected_model})...")
+            self.app.logger.info(f"Sending Arc Reconciliation Prompt {log_msg_prompt2_source} to LLM ({backend_info})...")
             reconciled_response = send_prompt(prompt2, model=selected_model)
             
             if not reconciled_response:
-                self.app.logger.error(f"Failed to reconcile arcs using LLM ({selected_model}). No response.")
+                self.app.logger.error(f"Failed to reconcile arcs using LLM ({backend_info}). No response.")
                 show_error("Error", "Failed to reconcile arcs using LLM.")
                 return
             
@@ -635,12 +641,14 @@ class StoryStructure:
                     self.app.logger.warning(f"Add {location_type_name} to Arcs Prompt not logged directly. Enable DEBUG for full prompt.")
 
             # Send prompt to LLM
+            current_backend = get_backend()
+            backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
             log_msg_prompt_source = f"(from {prompt_filepath})" if prompt_filepath else "(from memory, save failed)"
-            self.app.logger.info(f"Sending Add {location_type_name} to Arcs Prompt {log_msg_prompt_source} to LLM ({selected_model})...")
+            self.app.logger.info(f"Sending Add {location_type_name} to Arcs Prompt {log_msg_prompt_source} to LLM ({backend_info})...")
             response = send_prompt(prompt, model=selected_model)
             
             if not response:
-                self.app.logger.error(f"Failed to get response from LLM ({selected_model}) when adding {location_type_name.lower()}.")
+                self.app.logger.error(f"Failed to get response from LLM ({backend_info}) when adding {location_type_name.lower()}.")
                 show_error("Error", f"Failed to get response from LLM when adding {location_type_name.lower()}.")
                 return
 
@@ -881,8 +889,10 @@ class StoryStructure:
                     else:
                         self.app.logger.warning(f"Prompt for section '{current_section_name_for_prompt}' not logged directly. Enable DEBUG for full prompt.")
 
+                current_backend = get_backend()
+                backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
                 log_msg_prompt_source = f"(from {prompt_filepath})" if prompt_filepath else "(from memory, save failed)"
-                self.app.logger.info(f"Sending prompt for section '{current_section_name_for_prompt}' {log_msg_prompt_source} to LLM ({selected_model})...")
+                self.app.logger.info(f"Sending prompt for section '{current_section_name_for_prompt}' {log_msg_prompt_source} to LLM ({backend_info})...")
                 response = send_prompt(prompt, model=selected_model)
                 
                 safe_section_name_for_output = current_section_name_for_prompt.lower().replace(' ', '_').replace(':','').replace('/','_')
@@ -1027,13 +1037,15 @@ class StoryStructure:
             else:
                 self.app.logger.warning("Short Story Plot Outline Prompt not logged directly. Enable DEBUG for full prompt.")
 
+        current_backend = get_backend()
+        backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
         log_msg_prompt_source = f"(from {prompt_filepath})" if prompt_filepath else "(from memory, save failed)"
-        self.app.logger.info(f"Sending Short Story Plot Outline Prompt {log_msg_prompt_source} to LLM ({selected_model})...")
+        self.app.logger.info(f"Sending Short Story Plot Outline Prompt {log_msg_prompt_source} to LLM ({backend_info})...")
         
         response = send_prompt(prompt, model=selected_model)
 
         if not response:
-            self.app.logger.error(f"Failed to generate short story plot from LLM ({selected_model}). No response.")
+            self.app.logger.error(f"Failed to generate short story plot from LLM ({backend_info}). No response.")
             show_error("Error", "Failed to generate short story plot from LLM.")
             return
         

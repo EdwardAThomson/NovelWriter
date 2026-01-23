@@ -37,16 +37,18 @@ load_dotenv()  # This will load environment variables from the .env file
 _current_model: str = "gpt-4o"  # Default model for API backend
 
 
-def set_backend(backend: str, model: str = "gpt-4o") -> None:
+def set_backend(backend: str, model: Optional[str] = None) -> None:
     """Set the LLM backend to use.
     
     Args:
         backend: Backend identifier ("api", "codex", "gemini-cli", "claude-cli")
-        model: Model to use (only applies to "api" backend)
+        model: Model to use (only applies to "api" backend). Defaults to current model or "gpt-4o".
     """
     global _current_model
-    _current_model = model
-    initialize_llm(backend=backend, model=model)
+    if model:
+        _current_model = model
+    
+    initialize_llm(backend=backend, model=_current_model)
 
 
 def get_backend() -> str:
@@ -105,7 +107,7 @@ def get_supported_models():
     return list(_model_config.keys())
 
 
-def send_prompt(prompt, model="gpt-4o"):
+def send_prompt(prompt, model=None):
     """Sends a prompt to the specified AI model.
     
     This function routes to the appropriate backend based on current settings.
@@ -114,7 +116,8 @@ def send_prompt(prompt, model="gpt-4o"):
     
     Args:
         prompt: The text prompt to send.
-        model: Model name (used for API backend, ignored for CLI backends).
+        model: Model name (used for API backend, ignored for CLI backends). 
+               If None, uses the currently selected model.
         
     Returns:
         Generated text from the LLM.
@@ -130,7 +133,11 @@ def send_prompt(prompt, model="gpt-4o"):
             initialize_llm(backend=current_backend)
         print(f"Using CLI backend: {current_backend}")
         return llm_send_prompt(prompt)
-    
+
+    # Use current model if none provided
+    if model is None:
+        model = _current_model
+
     # For API backend, use the model registry
     if model not in _model_config:
         # Try adding '-latest' if applicable
@@ -150,17 +157,20 @@ def send_prompt(prompt, model="gpt-4o"):
         raise
 
 
-def send_prompt_with_retry(prompt, model="gpt-4o", max_retries=3):
+def send_prompt_with_retry(prompt, model=None, max_retries=3):
     """Send a prompt with automatic retry on failure.
     
     Args:
         prompt: The text prompt to send.
-        model: Model name (used for API backend).
+        model: Model name (used for API backend). If None, uses current model.
         max_retries: Maximum number of retry attempts.
         
     Returns:
         Generated text from the LLM.
     """
+    if model is None:
+        model = get_model()
+    
     last_error: Optional[Exception] = None
     
     for attempt in range(max_retries):
@@ -212,9 +222,11 @@ def _ensure_gemini_configured():
         _gemini_configured = True
 
 
-def send_prompt_oai(prompt, model="gpt-4o", max_tokens=16384, temperature=0.7,
+def send_prompt_oai(prompt, model=None, max_tokens=16384, temperature=0.7,
                 role_description="You are a helpful fiction writing assistant. You will create original text only."):
     """Send prompts with GPT-4o and similar models."""
+    if model is None:
+        model = get_model()
     client = _get_openai_client()
     response = client.chat.completions.create(
         messages=[

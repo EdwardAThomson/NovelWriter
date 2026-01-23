@@ -1,6 +1,6 @@
 from tkinter import ttk, messagebox
 from core.gui.notifications import show_success, show_error
-from core.generation.ai_helper import send_prompt
+from core.generation.ai_helper import send_prompt, get_backend
 import re
 from core.generation.helper_fns import open_file, write_file, save_prompt_to_file, read_json
 import os
@@ -336,7 +336,9 @@ class ChapterWriting:
                 prompt_filepath = save_prompt_to_file(output_dir, prompt_filename_base, prompt)
                 log_msg_source = f"(from {prompt_filepath})" if prompt_filepath else "(from memory, save failed)"
                 
-                self.app.logger.info(f"Sending prompt for Scene {scene_index + 1} {log_msg_source} to LLM ({selected_model}).")
+                current_backend = get_backend()
+                backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
+                self.app.logger.info(f"Sending prompt for Scene {scene_index + 1} {log_msg_source} to LLM ({backend_info}).")
                 
                 try:
                     scene_prose = send_prompt(prompt, model=selected_model)
@@ -635,7 +637,9 @@ class ChapterWriting:
                 prompt_filepath = save_prompt_to_file(output_dir, prompt_filename_base, prompt)
                 log_msg_source = f"(from {prompt_filepath})" if prompt_filepath else "(from memory, save failed)"
 
-                self.app.logger.info(f"Sending prompt for Chapter {target_chapter_number_global}, Scene {scene_idx_in_chapter} {log_msg_source} to LLM ({selected_model}).")
+                current_backend = get_backend()
+                backend_info = f"{current_backend}" if current_backend != "api" else f"api/{selected_model}"
+                self.app.logger.info(f"Sending prompt for Chapter {target_chapter_number_global}, Scene {scene_idx_in_chapter} {log_msg_source} to LLM ({backend_info}).")
                 
                 try:
                     scene_prose_text = send_prompt(prompt, model=selected_model)
