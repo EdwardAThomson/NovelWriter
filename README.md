@@ -31,12 +31,12 @@ Each genre features specialized faction generation, character creation, and worl
 The application features a dynamic LLM model and backend selector, allowing users to choose between **API backends** and **local CLI tools**, and to pick specific models for API usage. Currently configured models include:
 
 *   OpenAI GPT-5, GPT-4o, o3, o4-mini
-*   Claude 4.5 Sonnet
-*   Gemini 2.5 Pro
-*   *(You can add/remove models by configuring `ai_helper.py`)*
+*   Claude 4.5 Sonnet, Claude 4.5 Opus
+*   Gemini 2.5 Pro, Gemini 3 Pro
+*   *(You can add/remove models by configuring `core/generation/ai_helper.py`)*
 
 Deprecated models:
-*   OpenAI o1, o1-mini o3, o4-mini
+*   OpenAI o1, o1-mini
 *   Gemini 1.5, 2.0
 *   Claude 3.5, 3.7 Sonnet
 
@@ -132,7 +132,7 @@ It might easiest to open the files in an IDE and let it handle virtual environme
 
 ### `combine.py` -- build the novel file
 
-Located in the root directory, this script is used to combine all generated chapter markdown files (typically found in `current_work/chapters/`) into a single markdown file. The output file is named after the novel's title (if found in `parameters.txt`) or defaults to `combined_novel.md`, and is saved within the `current_work/chapters/` directory. This is useful for creating a complete manuscript from individual chapter files.
+Located at `core/utils/combine.py`, this script is used to combine all generated chapter markdown files (typically found in `current_work/chapters/`) into a single markdown file. The output file is named after the novel's title (if found in `parameters.txt`) or defaults to `combined_novel.md`, and is saved within the `current_work/chapters/` directory. This is useful for creating a complete manuscript from individual chapter files.
 
 ## 📚 Documentation
 
