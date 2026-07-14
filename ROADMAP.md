@@ -49,9 +49,21 @@ _Status: active · updated 2026-07-14_
 - [x] Unified multi-backend LLM interface routing to hosted APIs or local CLI tools (core/generation/llm_interface)
 - [x] Documentation refreshed: README synced to current code, plus developer, integration, and workflow guides under docs/
 
+## Planned: Cross-pollination from StoryDaemon
+> Learnings and self-contained subsystems to bring over from the sibling StoryDaemon project. Full analysis and rationale in StoryDaemon's docs/CROSS_POLLINATION.md (https://github.com/EdwardAThomson/StoryDaemon/blob/main/docs/CROSS_POLLINATION.md).
+- [ ] Tension / arc-pressure control: adopt the target-tension curve, LLM tension scorer, and writer/planner guidance, mapping story position to outline position (NovelWriter has no tension control today)
+- [ ] Grounded name generation: mint names in Python and have the LLM select and justify rather than invent (port name_generator plus its data banks)
+- [ ] Contradiction detection: similarity pre-filter plus LLM judge plus older-wins canon policy, adapted to the consistency entity model
+- [ ] Wire up the dormant ChromaDB RAG memory (core/generation/rag_helper.py), using StoryDaemon's VectorStore as the reference
+- [ ] Enforce QA retry: make the review loop actually regenerate or bounded-rewrite toward target instead of only recommending (the ChapterWritingAgent retry path is currently inert)
+
 ## Backlog
 - [ ] CI/CD: build scripts, test paths, deployment scripts
       Low priority for a desktop app; revisit only if distribution/packaging calls for it.
+- [ ] Extract the duplicated LLM-backend layer into a shared Python package both apps depend on
+      Spans NovelWriter, StoryDaemon, and LLM-Remote-Runner; scoped in StoryDaemon's docs/CROSS_POLLINATION.md. Pending decisions on home, name, and distribution.
+- [ ] Add a test suite for core/ and agents/ (none today)
+- [ ] Remove dead or stale code: IntegratedStoryOrchestrator (orphaned), AdaptivePlanningAgent (hardcoded stub), and the mismatched top-level generate_story() coordinator
 
 ## Notes
 - refactor_plan.md documents the one-time core/ + agents/ reorganization. The agentic layer it prepared for has since shipped (see the Agentic Framework milestone); its design lives in docs/agentic_implementation.md, agentic_integration_guide.md, and agent_workflow_explanation.md.
