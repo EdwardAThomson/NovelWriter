@@ -57,6 +57,10 @@ class ClaudeCliInterface:
         response and extract the `result` field as the generated text.
         """
         try:
+            # Anthropic keys are stripped so claude -p authenticates via the
+            # subscription login rather than silently billing a metered key
+            # from .env (see _env.py; both key spellings used across repos)
+            from ._env import subprocess_env_without
             result = subprocess.run(
                 [
                     self.claude_bin,
@@ -69,6 +73,8 @@ class ClaudeCliInterface:
                 text=True,
                 timeout=timeout,
                 check=True,
+                env=subprocess_env_without("ANTHROPIC_API_KEY",
+                                           "CLAUDE_API_KEY"),
             )
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr.strip() if e.stderr else "Unknown error"

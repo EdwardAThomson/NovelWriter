@@ -70,6 +70,10 @@ class GeminiCliInterface:
         """
         try:
             # Non-interactive call: gemini -p "..." -m <model>
+            # Gemini keys are stripped so the CLI authenticates via its own
+            # login rather than silently billing a metered key from .env
+            # (see _env.py; the CLI honors either variable)
+            from ._env import subprocess_env_without
             result = subprocess.run(
                 [
                     self.gemini_bin,
@@ -82,6 +86,8 @@ class GeminiCliInterface:
                 text=True,
                 timeout=timeout,
                 check=True,
+                env=subprocess_env_without("GEMINI_API_KEY",
+                                           "GOOGLE_API_KEY"),
             )
             return result.stdout.strip()
 

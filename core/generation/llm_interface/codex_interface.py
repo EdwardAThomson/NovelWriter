@@ -69,6 +69,10 @@ class CodexInterface:
         """
         try:
             # Use 'codex exec' for non-interactive execution
+            # OPENAI_API_KEY is stripped so codex authenticates via its own
+            # login rather than silently billing the metered key from .env
+            # (see _env.py for the full rationale)
+            from ._env import subprocess_env_without
             result = subprocess.run(
                 [
                     self.codex_bin,
@@ -80,7 +84,8 @@ class CodexInterface:
                 capture_output=True,
                 text=True,
                 timeout=timeout,
-                check=True
+                check=True,
+                env=subprocess_env_without('OPENAI_API_KEY')
             )
             return result.stdout.strip()
         
