@@ -1,19 +1,23 @@
 """LLM Interface Module for NovelWriter.
 
-Provides a unified, backend-agnostic interface for LLM access.
+Provides a unified, backend-agnostic interface for LLM access. Since the
+llm-backends adoption (StoryDaemon docs/LLM_BACKENDS_INVENTORY.md section 7.4,
+step 4) the implementations live in the shared `llm-backends` package; this
+package keeps the old import paths working (llm_interface.py is a thin
+stateful wrapper, the other modules are sys.modules alias shims).
 
 Backends:
-- "api"         → Multi-provider API backend (OpenAI, Gemini, Claude)
-- "codex"       → Codex CLI (GPT-5 via codex exec)
+- "api"         → Multi-provider API backend (OpenAI, Gemini, Claude, OpenRouter, ...)
+- "codex"       → Codex CLI
 - "gemini-cli"  → Gemini CLI backend using the local `gemini` binary
 - "claude-cli"  → Claude Code CLI backend using the local `claude` binary
 
 Usage:
     from core.generation.llm_interface import initialize_llm, send_prompt
-    
+
     # Initialize with desired backend
-    initialize_llm(backend="api", model="gpt-4o")
-    
+    initialize_llm(backend="api", model="gpt-5.5")
+
     # Send prompts
     response = send_prompt("Write a story about...")
 """

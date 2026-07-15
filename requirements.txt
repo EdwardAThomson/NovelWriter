@@ -1,3 +1,11 @@
+# Shared LLM backend layer (llm-backends): core/generation/ai_helper.py and
+# the core/generation/llm_interface/ modules are compatibility shims over this
+# package (StoryDaemon docs/LLM_BACKENDS_INVENTORY.md, section 7.4 step 4).
+# Pinned git-URL install (the package is public); for day-to-day development
+# against a sibling checkout use instead:
+#     pip install -e ../llm-backends
+llm-backends @ git+https://github.com/EdwardAThomson/llm-backends@v0.1.1
+
 annotated-types==0.7.0
 anthropic==0.69.0
 anyio==4.6.2.post1

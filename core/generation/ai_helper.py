@@ -1,53 +1,83 @@
 # ai_helper.py
-# https://platform.openai.com/docs/models
 #
-# This module provides backward-compatible LLM access for NovelWriter.
-# It now uses the unified llm_interface module under the hood, which supports:
-# - API backends (OpenAI, Gemini, Claude)
-# - CLI backends (Codex, Gemini CLI, Claude CLI)
+# Backward-compatible LLM facade for NovelWriter, now backed by the shared
+# `llm-backends` package (StoryDaemon docs/LLM_BACKENDS_INVENTORY.md section
+# 7.4, step 4). The GUI and the agents import everything LLM-shaped from here:
+# send_prompt / send_prompt_with_retry, the backend state (set_backend /
+# get_backend / get_model), and the dropdown sources (get_supported_models /
+# get_available_backends / check_cli_availability).
+#
+# What changed at adoption:
+# - ONE model registry (the package's) instead of the two disagreeing local
+#   ones this module and llm_interface/multi_provider_llm.py used to carry.
+#   get_supported_models() now returns the package's primary keys; the old
+#   NovelWriter names are gone from the list. "claude-4-5-sonnet" still works
+#   via the package alias table; "claude-4-5-opus" has no package primary and
+#   deliberately raises ValueError (it must not be silently re-pointed at a
+#   newer Opus).
+# - The default API model is the package's DEFAULT_API_MODEL instead of the
+#   hardcoded "gpt-4o".
+# - The Anthropic key is read by the package: ANTHROPIC_API_KEY is canonical,
+#   with the historical CLAUDE_API_KEY spelling still honored as a deprecated
+#   fallback, so existing .env files keep working.
+# - The CLI backends strip provider API keys from their subprocess env by
+#   default (the billing gotcha; this supersedes the interim _env.py hotfix).
 
-import os
+import os  # noqa: F401  (kept for callers that reach through this module)
 from typing import Optional
+
 from dotenv import load_dotenv
 
-# Import from the new unified interface
-from .llm_interface import (
-    initialize_llm,
-    send_prompt as llm_send_prompt,
-    send_prompt_with_retry as llm_send_prompt_with_retry,
-    get_available_backends,
-    get_current_backend,
-    is_initialized,
-    check_cli_availability,
-)
-from .llm_interface.multi_provider_llm import (
-    get_supported_models as get_api_models,
-    send_prompt_openai,
-    send_prompt_gemini,
+from llm_backends import DEFAULT_API_MODEL
+from llm_backends import multi_provider_llm as _mp
+from llm_backends.multi_provider_llm import (  # noqa: F401  back-compat re-exports
+    get_supported_models,
+    resolve_model,
     send_prompt_claude,
+    send_prompt_gemini,
+    send_prompt_openai,
+)
+
+from .llm_interface import (
+    check_cli_availability,  # noqa: F401  re-export (GUI dropdown source)
+    get_available_backends,  # noqa: F401  re-export (GUI dropdown source)
+    get_current_backend,
+    initialize_llm,
+    is_initialized,
+    send_prompt as llm_send_prompt,
 )
 
 
-load_dotenv()  # This will load environment variables from the .env file
+load_dotenv()  # Load API keys from .env into the environment (app-owned; the package only reads os.environ)
 
 
 # --- Backend State ---
-# Note: The actual backend state is managed by llm_interface module.
-# We keep _current_model here for API backend model selection.
-_current_model: str = "gpt-4o"  # Default model for API backend
+# Backend selection state lives in llm_interface; we keep the current API
+# model here for the API backend.
+_current_model: str = DEFAULT_API_MODEL
+
+# NovelWriter's system prompt for API generations (A5: system prompts are
+# app-owned; the package default would otherwise apply).
+ROLE_DESCRIPTION = (
+    "You are a helpful fiction writing assistant. You will create original text only."
+)
+
+# max_tokens for API generations (the CLI backends use their own defaults).
+DEFAULT_MAX_TOKENS = 16384
 
 
 def set_backend(backend: str, model: Optional[str] = None) -> None:
     """Set the LLM backend to use.
-    
+
     Args:
         backend: Backend identifier ("api", "codex", "gemini-cli", "claude-cli")
-        model: Model to use (only applies to "api" backend). Defaults to current model or "gpt-4o".
+        model: Model to use. For "api" this is a package registry key
+               (defaults to the current model, initially DEFAULT_API_MODEL).
     """
     global _current_model
     if model:
         _current_model = model
-    
+
     initialize_llm(backend=backend, model=_current_model)
 
 
@@ -62,71 +92,30 @@ def get_model() -> str:
     return _current_model
 
 
-# --- Model Configuration (Backward Compatibility) ---
-# These are the models available via the API backend
-_model_config = {
-    "gpt-4o": lambda prompt: send_prompt_openai(
-        prompt=prompt,
-        model="gpt-4o",
-        max_tokens=16384,
-        temperature=0.7,
-        role_description="You are an expert storyteller focused on character relationships."
-    ),
-    "o3": lambda prompt: send_prompt_openai_reasoning(prompt, model="o3"),
-    "o4-mini": lambda prompt: send_prompt_openai_reasoning(prompt, model="o4-mini"),
-    "gpt-5-2025-08-07": lambda prompt: send_prompt_openai_reasoning(prompt, model="gpt-5-2025-08-07"),
-    "gemini-2.5-pro-exp-03-25": lambda prompt: send_prompt_gemini(
-         prompt=prompt,
-         model_name="gemini-2.5-pro-exp-03-25",
-         max_output_tokens=8192,
-         temperature=0.7,
-    ),
-    "gemini-3-pro-preview": lambda prompt: send_prompt_gemini(
-         prompt=prompt,
-         model_name="gemini-3-pro-preview",
-         max_output_tokens=8192,
-         temperature=0.7,
-    ),
-    "claude-4-5-sonnet": lambda prompt: send_prompt_claude(
-         prompt=prompt,
-         model="claude-sonnet-4-5-20250929",
-         max_tokens=8192,
-         temperature=0.7
-    ),
-    "claude-4-5-opus": lambda prompt: send_prompt_claude(
-         prompt=prompt,
-         model="claude-opus-4-5",
-         max_tokens=8192,
-         temperature=0.7
-    ),
-}
-
-
-def get_supported_models():
-    """Returns a list of supported model names for the API backend."""
-    return list(_model_config.keys())
-
-
 def send_prompt(prompt, model=None):
     """Sends a prompt to the specified AI model.
-    
-    This function routes to the appropriate backend based on current settings.
-    For API backend, it uses the model parameter.
-    For CLI backends, it uses the configured CLI tool.
-    
+
+    Routes to the appropriate backend based on current settings: CLI backends
+    go through llm_interface; the API backend goes through the llm-backends
+    model registry (which also accepts legacy aliases such as
+    "claude-4-5-sonnet" and the "openrouter:<upstream-id>" passthrough form).
+
     Args:
         prompt: The text prompt to send.
-        model: Model name (used for API backend, ignored for CLI backends). 
+        model: Model name (used for API backend, ignored for CLI backends).
                If None, uses the currently selected model.
-        
+
     Returns:
         Generated text from the LLM.
+
+    Raises:
+        ValueError: If the model is not in the package registry (nor an alias).
     """
     global _current_model
-    
+
     # Get current backend from the unified interface (single source of truth)
     current_backend = get_backend()
-    
+
     # If using a CLI backend, use the unified interface directly
     if current_backend != "api":
         if not is_initialized():
@@ -138,20 +127,15 @@ def send_prompt(prompt, model=None):
     if model is None:
         model = _current_model
 
-    # For API backend, use the model registry
-    if model not in _model_config:
-        # Try adding '-latest' if applicable
-        if f"{model}-latest" in _model_config:
-             model = f"{model}-latest"
-        else:
-             supported_models = get_supported_models()
-             raise ValueError(f"Unsupported model: {model}. Supported models are: {supported_models}")
+    # Validate/resolve against the package registry (raises ValueError with
+    # the supported list for unknown names, e.g. the retired claude-4-5-opus).
+    resolve_model(model)
 
     print(f"Attempting to use model: {model}")
     _current_model = model
-    
+
     try:
-        return _model_config[model](prompt)
+        return _mp.send_prompt(prompt, model=model, max_tokens=DEFAULT_MAX_TOKENS)
     except Exception as e:
         print(f"Error calling model '{model}': {e}")
         raise
@@ -159,20 +143,20 @@ def send_prompt(prompt, model=None):
 
 def send_prompt_with_retry(prompt, model=None, max_retries=3):
     """Send a prompt with automatic retry on failure.
-    
+
     Args:
         prompt: The text prompt to send.
         model: Model name (used for API backend). If None, uses current model.
         max_retries: Maximum number of retry attempts.
-        
+
     Returns:
         Generated text from the LLM.
     """
     if model is None:
         model = get_model()
-    
+
     last_error: Optional[Exception] = None
-    
+
     for attempt in range(max_retries):
         try:
             return send_prompt(prompt, model=model)
@@ -181,123 +165,53 @@ def send_prompt_with_retry(prompt, model=None, max_retries=3):
             print(f"Attempt {attempt + 1}/{max_retries} failed: {e}")
             if attempt < max_retries - 1:
                 continue
-    
+
     raise RuntimeError(
         f"Model '{model}' failed after {max_retries} attempts. Last error: {last_error}"
     )
 
 
-# --- Provider-specific functions (for backward compatibility) ---
-
-# Lazy-loaded clients
-_openai_client = None
-_anthropic_client = None
-_gemini_configured = False
+# --- Provider-specific functions (backward compatibility) ---
+# Thin delegates to the package provider functions. The old local client
+# singletons are gone; the package manages clients (and the ANTHROPIC_API_KEY
+# canon with the CLAUDE_API_KEY fallback) itself.
 
 
-def _get_openai_client():
-    """Get or create OpenAI client."""
-    global _openai_client
-    if _openai_client is None:
-        from openai import OpenAI
-        _openai_client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-    return _openai_client
-
-
-def _get_anthropic_client():
-    """Get or create Anthropic client."""
-    global _anthropic_client
-    if _anthropic_client is None:
-        import anthropic
-        _anthropic_client = anthropic.Anthropic(api_key=os.environ.get("CLAUDE_API_KEY"))
-    return _anthropic_client
-
-
-def _ensure_gemini_configured():
-    """Configure Gemini if not already done."""
-    global _gemini_configured
-    if not _gemini_configured:
-        import google.generativeai as genai
-        genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
-        _gemini_configured = True
-
-
-def send_prompt_oai(prompt, model=None, max_tokens=16384, temperature=0.7,
-                role_description="You are a helpful fiction writing assistant. You will create original text only."):
-    """Send prompts with GPT-4o and similar models."""
+def send_prompt_oai(prompt, model=None, max_tokens=DEFAULT_MAX_TOKENS, temperature=0.7,
+                    role_description=ROLE_DESCRIPTION):
+    """Send prompts to OpenAI chat models (legacy helper)."""
     if model is None:
         model = get_model()
-    client = _get_openai_client()
-    response = client.chat.completions.create(
-        messages=[
-            {"role": "system", "content": role_description},
-            {"role": "user", "content": prompt},
-        ],
+    return send_prompt_openai(
+        prompt,
         model=model,
         max_tokens=max_tokens,
         temperature=temperature,
+        role_description=role_description,
     )
-    print("model used: ", model)
-    return response.choices[0].message.content
 
 
-def send_prompt_openai_reasoning(prompt, model="o3"):
-    """Send prompts with OpenAI reasoning models (o1, o3, o4-mini, etc.)."""
-    client = _get_openai_client()
-    response = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    print("Used model: ", model)
-    return response.choices[0].message.content
-
-
-# Alias for backward compatibility
-send_prompt_o1 = send_prompt_openai_reasoning
-
-
-def send_prompt_gemini_direct(prompt, model_name="gemini-2.5-pro-exp-03-25", max_output_tokens=8192, 
-                              temperature=0.7, top_p=1, top_k=1):
-    """Send a prompt to the Gemini API directly."""
-    _ensure_gemini_configured()
-    import google.generativeai as genai
-    
-    model = genai.GenerativeModel(model_name)
-    generation_config = genai.types.GenerationConfig(
+def send_prompt_gemini_direct(prompt, model_name="gemini-2.5-pro", max_output_tokens=8192,
+                              temperature=0.7):
+    """Send a prompt to the Gemini API directly (legacy helper)."""
+    return send_prompt_gemini(
+        prompt,
+        model_name=model_name,
         max_output_tokens=max_output_tokens,
         temperature=temperature,
-        top_p=top_p,
-        top_k=top_k
     )
 
-    try:
-        response = model.generate_content(
-            prompt,
-            generation_config=generation_config,
-            stream=False
-        )
-        print("Used model: ", model_name)
-        return response.text
-    except Exception as e:
-        print(f"Error generating content: {e}")
-        return None
 
-
-def send_prompt_claude_direct(prompt, model="claude-sonnet-4-5-20250929", max_tokens=8192, temperature=0.7,
-                              role_description="You are a skilled creative writer focused on producing original fiction."):
-    """Send a prompt to Anthropic's Claude API directly."""
-    try:
-        client = _get_anthropic_client()
-        response = client.messages.create(
-            model=model,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            system=role_description,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        print("Used model: ", model)
-        return response.content[0].text
-    except Exception as e:
-        print(f"Error generating content with Claude: {e}")
-        return None
-
+def send_prompt_claude_direct(prompt, model="claude-sonnet-4-5-20250929", max_tokens=8192,
+                              temperature=0.7,
+                              role_description=(
+                                  "You are a skilled creative writer focused on producing original fiction."
+                              )):
+    """Send a prompt to Anthropic's Claude API directly (legacy helper)."""
+    return send_prompt_claude(
+        prompt,
+        model=model,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        role_description=role_description,
+    )

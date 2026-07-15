@@ -1,26 +1,37 @@
-"""Unified LLM interface for NovelWriter.
+"""Unified LLM interface for NovelWriter: thin wrapper over llm-backends.
 
-Provides a backend-agnostic interface for LLM access.
+The backend implementations (API providers and the three CLI agents) live in
+the shared `llm-backends` package. This module keeps only the NovelWriter
+specifics the package deliberately does not own:
+
+- the "api" default backend (the package's module-level default is "codex"),
+- the NovelWriter-facing backend name state (get_current_backend) and the
+  AVAILABLE_BACKENDS description dict consumed by the GUI dropdown,
+- the 16384 max_tokens default used by the writing workflows,
+- the custom-binary kwargs (codex_bin / gemini_bin / claude_bin) of the old
+  initialize_llm signature.
+
+This is a plain re-export wrapper rather than a sys.modules alias because of
+those NovelWriter-owned defaults; nothing in this repo monkeypatches the
+module's privates (there was no test suite for this layer before adoption).
 
 Backends:
-- "api"         → Multi-provider API backend (OpenAI, Gemini, Claude) using
-                  a model registry.
-- "codex"       → Codex CLI (GPT-5 via codex exec)
-- "gemini-cli"  → Gemini CLI backend using the local `gemini` binary.
-- "claude-cli"  → Claude Code CLI backend using the local `claude` binary.
-
-The API backend uses model names (e.g. "gpt-4o", "claude-4-5-sonnet",
-"gemini-2.5-pro-exp-03-25") to route to the correct provider.
+- "api"         → Multi-provider API backend (registry in llm_backends)
+- "codex"       → Codex CLI
+- "gemini-cli"  → Gemini CLI backend using the local `gemini` binary
+- "claude-cli"  → Claude Code CLI backend using the local `claude` binary
 """
-from typing import Optional, Union
+from typing import Optional
 
-from .codex_interface import CodexInterface
-from .multi_provider_llm import MultiProviderInterface
-from .gemini_cli_interface import GeminiCliInterface
-from .claude_cli_interface import ClaudeCliInterface
-
-
-LLMClient = Union[CodexInterface, MultiProviderInterface, GeminiCliInterface, ClaudeCliInterface]
+from llm_backends import DEFAULT_API_MODEL
+from llm_backends.llm_interface import LLMClient  # re-export, public surface
+from llm_backends.llm_interface import check_cli_availability  # noqa: F401 re-export
+from llm_backends import (
+    ClaudeCliInterface,
+    CodexInterface,
+    GeminiCliInterface,
+    MultiProviderInterface,
+)
 
 
 # Global LLM client instance used by helper functions
@@ -28,30 +39,22 @@ _llm_client: Optional[LLMClient] = None
 _current_backend: Optional[str] = None
 
 
-# Available backends
+# Available backends (GUI dropdown source)
 AVAILABLE_BACKENDS = {
-    "api": "Multi-provider API (OpenAI, Gemini, Claude)",
-    "codex": "Codex CLI (GPT-5)",
+    "api": "Multi-provider API (OpenAI, Gemini, Claude, OpenRouter, ...)",
+    "codex": "Codex CLI",
     "gemini-cli": "Gemini CLI",
     "claude-cli": "Claude Code CLI",
 }
 
 
 def get_available_backends() -> dict:
-    """Return dictionary of available backends with descriptions.
-    
-    Returns:
-        Dict mapping backend ID to description string.
-    """
+    """Return dictionary of available backends with descriptions."""
     return AVAILABLE_BACKENDS.copy()
 
 
 def get_current_backend() -> Optional[str]:
-    """Return the currently active backend name.
-    
-    Returns:
-        Backend name string or None if not initialized.
-    """
+    """Return the currently active backend name (None if not initialized)."""
     return _current_backend
 
 
@@ -69,7 +72,12 @@ def initialize_llm(
         codex_bin: Path to Codex CLI binary (for backend="codex").
         gemini_bin: Path to Gemini CLI binary (for backend="gemini-cli").
         claude_bin: Path to Claude CLI binary (for backend="claude-cli").
-        model: Model identifier for API backend (for backend="api").
+        model: Model identifier. For backend="api" this is a registry key
+            (llm_backends.get_supported_models() lists them; legacy aliases
+            like "claude-4-5-sonnet" also resolve). For the CLI backends it is
+            forwarded when it fits the CLI (gemini-* names to the Gemini CLI,
+            Claude names to the Claude CLI); otherwise the CLI's own default
+            model is used.
 
     Returns:
         An initialized LLM client instance.
@@ -83,19 +91,21 @@ def initialize_llm(
 
     if backend_normalized in {"api", "openai"}:
         # "openai" kept for backward compatibility
-        _llm_client = MultiProviderInterface(model=model)
+        _llm_client = MultiProviderInterface(model=model or DEFAULT_API_MODEL)
         _current_backend = "api"
     elif backend_normalized == "codex":
         _llm_client = CodexInterface(codex_bin)
         _current_backend = "codex"
     elif backend_normalized in {"gemini-cli", "gemini"}:
-        # Use Gemini-appropriate model, not the API default
-        effective_model = model or "gemini-2.5-pro"
-        gemini_model = effective_model if effective_model.startswith("gemini") else "gemini-2.5-pro"
-        _llm_client = GeminiCliInterface(model=gemini_model, gemini_bin=gemini_bin)
+        # Only forward Gemini model names; otherwise the interface default wins.
+        if model and model.startswith("gemini"):
+            _llm_client = GeminiCliInterface(model=model, gemini_bin=gemini_bin)
+        else:
+            _llm_client = GeminiCliInterface(gemini_bin=gemini_bin)
         _current_backend = "gemini-cli"
     elif backend_normalized in {"claude-cli", "claude"}:
-        _llm_client = ClaudeCliInterface(claude_bin)
+        # ClaudeCliInterface itself ignores non-Claude model names.
+        _llm_client = ClaudeCliInterface(claude_bin, model=model)
         _current_backend = "claude-cli"
     else:
         raise RuntimeError(
@@ -111,7 +121,8 @@ def send_prompt(prompt: str, max_tokens: int = 16384) -> str:
 
     Args:
         prompt: The prompt to send.
-        max_tokens: Maximum tokens to generate.
+        max_tokens: Maximum tokens to generate (API backend; the CLI backends
+            use their own defaults).
 
     Returns:
         Generated text from the configured LLM backend.
@@ -156,22 +167,5 @@ def send_prompt_with_retry(
 
 
 def is_initialized() -> bool:
-    """Check if an LLM backend has been initialized.
-
-    Returns:
-        True if initialized, False otherwise.
-    """
+    """Check if an LLM backend has been initialized."""
     return _llm_client is not None
-
-
-def check_cli_availability() -> dict:
-    """Check which CLI backends are available on the system.
-    
-    Returns:
-        Dict mapping CLI backend names to availability status.
-    """
-    return {
-        "codex": CodexInterface.is_available(),
-        "gemini-cli": GeminiCliInterface.is_available(),
-        "claude-cli": ClaudeCliInterface.is_available(),
-    }

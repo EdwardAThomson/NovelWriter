@@ -32,15 +32,16 @@ Each genre features specialized faction generation, character creation, and worl
 
 The application features a dynamic LLM model and backend selector, allowing users to choose between **API backends** and **local CLI tools**, and to pick specific models for API usage. Currently configured models include:
 
-*   OpenAI GPT-5, GPT-4o, o3, o4-mini
-*   Claude 4.5 Sonnet, Claude 4.5 Opus
-*   Gemini 2.5 Pro, Gemini 3 Pro
-*   *(You can add/remove models by configuring `core/generation/ai_helper.py`)*
+*   OpenAI GPT-5.x family (gpt-5.5, gpt-5.4, gpt-5.4-mini, gpt-5.2)
+*   Claude (Fable 5, Opus 4.8, Sonnet 4.6, Sonnet 4.5, Haiku 4.5)
+*   Gemini (3.1 Pro/Flash preview, 3 Pro/Flash preview, 2.5 Pro/Flash)
+*   OpenRouter (convenience keys plus an `openrouter:<upstream-model-id>` passthrough), hosted/self-hosted OpenAI-compatible endpoints, and Venice
+*   *(The model list comes from the shared [`llm-backends`](https://github.com/EdwardAThomson/llm-backends) package registry; `core/generation/ai_helper.py` is a thin facade over it)*
 
-Deprecated models:
-*   OpenAI o1, o1-mini
-*   Gemini 1.5, 2.0
-*   Claude 3.5, 3.7 Sonnet
+Deprecated models (no longer in the registry):
+*   OpenAI GPT-4o, o1, o1-mini, o3, o4-mini
+*   Gemini 1.5, 2.0, 2.5 experimental snapshots
+*   Claude 3.5, 3.7 Sonnet; Claude 4.5 Opus (retired without a silent replacement: selecting it raises an error rather than re-pointing at a newer Opus)
 
 Running this code requires API keys for the specific LLMs you intend to use (e.g., an **OpenAI API key** for GPT models, a **Google AI API key** for Gemini models, **Anthropic API Key** for Claude models). These keys should be stored in a `.env` file in the project's root directory.
 
@@ -111,7 +112,7 @@ It might easiest to open the files in an IDE and let it handle virtual environme
     ```bash
     pip install -r requirements.txt
     ```
-    * (or `pip install openai python-dotenv google-generativeai anthropic`)
+    * (or `pip install python-dotenv "llm-backends[all] @ git+https://github.com/EdwardAThomson/llm-backends@v0.1.1"`)
     
 4.  **Configure API Keys:**
     *   Create a file named `.env` in the root directory of the project.
@@ -122,6 +123,7 @@ It might easiest to open the files in an IDE and let it handle virtual environme
         GEMINI_API_KEY='your_gemini_api_key_here'
         ANTHROPIC_API_KEY='your_anthropic_api_key_here'
         ```
+    *   `ANTHROPIC_API_KEY` is the canonical Anthropic key name; the historical `CLAUDE_API_KEY` spelling still works as a deprecated fallback.
     *   Replace the placeholder text with your actual keys.
 
 5.  **Run the Application:**

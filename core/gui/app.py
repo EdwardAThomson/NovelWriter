@@ -9,7 +9,7 @@ from core.gui.lore import Lore
 from core.gui.story_structure import StoryStructure
 from core.gui.scene_plan import ScenePlanning
 from core.gui.chapter_writing import ChapterWriting
-from core.generation.ai_helper import get_supported_models, set_backend, get_backend, check_cli_availability, get_available_backends
+from core.generation.ai_helper import get_supported_models, set_backend, get_backend, check_cli_availability, get_available_backends, DEFAULT_API_MODEL
 from core.gui.notifications import init_notifications, show_success, show_info, show_warning, show_error
 
 # Import agentic orchestrators
@@ -58,12 +58,14 @@ class NovelWriterApp:
         self.model_label = ttk.Label(self.model_frame, text="Model:")
         self.model_label.pack(side="left", padx=(5, 2))
 
-        # Get available models dynamically
+        # Get available models dynamically (llm-backends registry primaries)
         self.available_models = get_supported_models()
         if not self.available_models:
-            self.available_models = ["gpt-4o"]
+            self.available_models = [DEFAULT_API_MODEL]
 
-        self.selected_model_var = tk.StringVar(value=self.available_models[0] if self.available_models else "")
+        default_model = (DEFAULT_API_MODEL if DEFAULT_API_MODEL in self.available_models
+                         else self.available_models[0])
+        self.selected_model_var = tk.StringVar(value=default_model)
 
         self.model_combobox = ttk.Combobox(
             self.model_frame,
@@ -107,7 +109,7 @@ class NovelWriterApp:
         self.logger = setup_app_logger(output_dir=self.get_output_dir(), level=logging.DEBUG)
         self.logger.info("NovelWriterApp initialized and logger started.")
         if not self.available_models:
-             self.logger.warning("Could not retrieve models from ai_helper. Using default: gpt-4o")
+             self.logger.warning(f"Could not retrieve models from ai_helper. Using default: {DEFAULT_API_MODEL}")
         # --- End Logger Initialization ---
         
         # Initialize notification system
