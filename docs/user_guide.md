@@ -14,7 +14,7 @@ The overall design is this: click each button in turn. Click once, let the proce
 
 2. **Select Your AI Model**
    - At the top of the window, you'll see a dropdown menu labeled "Model"
-   - Choose your preferred AI model (e.g., "gpt-4o", "claude-3.5-sonnet", "gemini-1.5-pro")
+   - Choose your preferred AI model (e.g., "gpt-5.5", "claude-sonnet-4-6", "gemini-2.5-pro")
    - Each model has different strengths, but all will work well for novel generation
 
 ## Step-by-Step Novel Generation

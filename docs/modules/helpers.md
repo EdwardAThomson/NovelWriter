@@ -6,17 +6,15 @@ This document provides an overview of various helper modules and utility files t
 
 *   **Purpose**: This module centralizes all interactions with different Large Language Model (LLM) APIs, providing a unified interface for sending prompts and receiving responses.
 *   **Key Functions/Variables**:
-    *   `get_supported_models()`: Returns a list of string identifiers for the LLM models currently configured and supported by the application (e.g., `["gpt-4o", "gemini-1.5-pro"]`). This list is used to populate the model selection dropdown in the main UI.
-    *   `send_prompt(prompt: str, model: str, temperature: float = 0.7, max_tokens: int = None) -> str`:
+    *   `get_supported_models()`: Returns a list of string identifiers for the LLM models currently supported (e.g., `["gpt-5.5", "gemini-2.5-pro"]`). This list is sourced from the shared `llm-backends` registry and is used to populate the model selection dropdown in the main UI.
+    *   `send_prompt(prompt: str, model: str = None) -> str`:
         *   This is the primary function used by other modules to send a text prompt to a specified LLM and get a text response.
-        *   It takes the `prompt` string and the `model` identifier (from `get_supported_models()`) as main inputs.
-        *   Internally, it dispatches the request to a model-specific private function (e.g., `_call_openai`, `_call_gemini`, `_call_claude`) based on the `model` identifier.
-        *   API keys, required by the underlying LLM libraries (OpenAI, Google, Anthropic), are expected to be available in environment variables (typically loaded from a `.env` file at the project root by the `python-dotenv` library when the respective LLM libraries initialize).
-        *   `temperature`: Controls the randomness/creativity of the output. Higher values mean more randomness.
-        *   `max_tokens`: Can be used to limit the length of the generated response (though not all models/APIs might use this parameter identically).
+        *   It takes the `prompt` string and an optional `model` identifier (from `get_supported_models()`, defaulting to `DEFAULT_API_MODEL` when omitted).
+        *   Internally it dispatches the request through the shared [`llm-backends`](https://github.com/EdwardAThomson/llm-backends) package, which routes to the correct provider (OpenAI, Google, Anthropic, OpenRouter, etc.) based on the `model` identifier and the currently selected backend.
+        *   API keys are read from environment variables (typically loaded from a `.env` file at the project root via `python-dotenv`); `ANTHROPIC_API_KEY` is the canonical Anthropic key name, with the historical `CLAUDE_API_KEY` spelling accepted as a deprecated fallback.
+        *   A default writing token budget (`DEFAULT_MAX_TOKENS`, 16384) is applied by the wrapper. `send_prompt_with_retry(...)` wraps this call with retry logic, and the `send_prompt_oai` / `send_prompt_gemini_direct` / `send_prompt_claude_direct` helpers expose per-call `temperature` and `max_tokens` control.
         *   Includes basic error handling for API calls and will log issues. It returns the LLM's text response or an empty string/error message if the call fails.
-    *   Internal functions like `_call_openai(prompt, model_name, temperature, max_tokens)`, `_call_gemini(...)`, `_call_claude(...)` handle the specific API client initialization and request formatting for each LLM provider.
-*   **Configuration**: The list of supported models and their specific API parameters (if any beyond the standard ones) are defined directly within `ai_helper.py`. To add a new model or modify existing ones, this file needs to be edited.
+*   **Configuration**: `ai_helper.py` is now a thin facade over the shared `llm-backends` package; the list of supported models and their aliases live in that package's registry (surfaced here via `get_supported_models()`) rather than being hard-coded in this file. The NovelWriter-specific wrapper (`llm_interface.py`) still sets the API-default backend, the 16384 writing budget, GUI backend enumeration, and custom CLI binary paths.
 
 ## `helper_fns.py`
 

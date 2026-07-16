@@ -20,11 +20,11 @@ from agents.consistency.consistency_agent import ConsistencyAgent
 from agents.orchestration.orchestrator import MultiAgentOrchestrator
 
 # Initialize individual agents
-quality_agent = QualityControlAgent(model="gpt-4o")
-consistency_agent = ConsistencyAgent(model="gpt-4o", output_dir="current_work")
+quality_agent = QualityControlAgent(model="gpt-5.5")
+consistency_agent = ConsistencyAgent(model="gpt-5.5", output_dir="current_work")
 
 # Or use the orchestrator for comprehensive analysis
-orchestrator = MultiAgentOrchestrator(model="gpt-4o", output_dir="current_work")
+orchestrator = MultiAgentOrchestrator(model="gpt-5.5", output_dir="current_work")
 ```
 
 ### Quality Analysis
@@ -363,13 +363,13 @@ Different agents can use different models for specialized tasks:
 
 ```python
 # High-quality model for quality analysis
-quality_agent = QualityControlAgent(model="gpt-4o")
+quality_agent = QualityControlAgent(model="gpt-5.5")
 
 # Faster model for consistency tracking
-consistency_agent = ConsistencyAgent(model="gpt-3.5-turbo", output_dir="current_work")
+consistency_agent = ConsistencyAgent(model="gpt-5.4-mini", output_dir="current_work")
 
 # Mixed model orchestrator
-orchestrator = MultiAgentOrchestrator(model="gpt-4o", output_dir="current_work")
+orchestrator = MultiAgentOrchestrator(model="gpt-5.5", output_dir="current_work")
 ```
 
 ### Output Directory Management
@@ -424,7 +424,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 # Agents will provide detailed execution logs
-agent = QualityControlAgent(model="gpt-4o")
+agent = QualityControlAgent(model="gpt-5.5")
 ```
 
 ## Next Steps
