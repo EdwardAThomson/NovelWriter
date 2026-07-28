@@ -541,12 +541,24 @@ class Parameters:
                 backend_loaded = True
             
             if "Model" in loaded_params:
-                # Ensure the model exists in the available models list
+                # Ensure the model exists in the available models list.
+                # Parameter files saved before the llm-backends adoption may
+                # carry legacy spellings (e.g. "claude-4-5-sonnet"); resolve
+                # them to the canonical registry key instead of dropping them.
                 loaded_model = loaded_params["Model"]
-                if hasattr(self.app, 'available_models') and loaded_model in self.app.available_models:
-                    self.app.selected_model_var.set(loaded_model)
-                else:
-                    self.logger.warning(f"Loaded model '{loaded_model}' not in available list. Ignoring.")
+                if hasattr(self.app, 'available_models'):
+                    if loaded_model not in self.app.available_models:
+                        try:
+                            from llm_backends import resolve_model
+                            loaded_model = resolve_model(loaded_model)
+                            self.logger.info(
+                                f"Resolved legacy model '{loaded_params['Model']}' to '{loaded_model}'.")
+                        except ValueError:
+                            pass  # unknown model; warned below
+                    if loaded_model in self.app.available_models:
+                        self.app.selected_model_var.set(loaded_model)
+                    else:
+                        self.logger.warning(f"Loaded model '{loaded_model}' not in available list. Ignoring.")
             
             if backend_loaded:
                 # Trigger the backend change to update ai_helper and UI visibility

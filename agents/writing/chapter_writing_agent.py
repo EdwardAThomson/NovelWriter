@@ -789,14 +789,16 @@ class ChapterWritingAgent(BaseAgent):
         
         # Use genuine NovelWriter AI helper functions
         try:
-            from core.generation.ai_helper import send_prompt
+            from core.generation.ai_helper import DEFAULT_API_MODEL, send_prompt
             from core.generation.helper_fns import save_prompt_to_file
-            
-            # Get model from app instance or use default
+
+            # Get model from app instance or use the registry default
+            # (a hardcoded literal here would drift from the llm-backends
+            # registry; "gpt-4" already had, and raised ValueError).
             if self.app and hasattr(self.app, 'get_selected_model'):
                 model = self.app.get_selected_model()
             else:
-                model = "gpt-4"  # Default model
+                model = DEFAULT_API_MODEL
                 
             # Save prompt to file (following existing pattern)
             if is_short_story:

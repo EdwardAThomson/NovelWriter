@@ -4,7 +4,7 @@
 # Pinned git-URL install (the package is public); for day-to-day development
 # against a sibling checkout use instead:
 #     pip install -e ../llm-backends
-llm-backends @ git+https://github.com/EdwardAThomson/llm-backends@v0.1.1
+llm-backends @ git+https://github.com/EdwardAThomson/llm-backends@v0.2.0
 
 annotated-types==0.7.0
 anthropic==0.69.0
