@@ -112,7 +112,7 @@ It might easiest to open the files in an IDE and let it handle virtual environme
     ```bash
     pip install -r requirements.txt
     ```
-    * (or `pip install python-dotenv "llm-backends[all] @ git+https://github.com/EdwardAThomson/llm-backends@v0.1.1"`)
+    * (or `pip install python-dotenv "llm-backends[all] @ git+https://github.com/EdwardAThomson/llm-backends@v0.2.0"`)
     
 4.  **Configure API Keys:**
     *   Create a file named `.env` in the root directory of the project.
