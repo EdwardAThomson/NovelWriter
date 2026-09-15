@@ -1,10 +1,11 @@
 from .SciFiGenerator import _generate_base_name, generate_character_name, CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES
+from .name_utils import DictAccessMixin, NameRegistry
 import random
 import json
 from datetime import datetime
 import re
 
-class Character:
+class Character(DictAccessMixin):
     # Class-level title lists
     MILITARY_TITLES = {
         "high": {
@@ -504,15 +505,18 @@ def generate_main_characters(num_characters=3, female_percentage=50, male_percen
     antagonist_faction = None
     supporting_character_count = 0
 
+    # One registry per cast so no two characters share a name.
+    name_registry = NameRegistry()
+
     for i in range(min(num_characters, len(roles))):
         try:
             # Generate gender first
             gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
             
             # Use generate_character_name from SciFiGenerator for name generation
-            first_name = generate_character_name(gender)
-            last_name = _generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES, middle_chance=0.4)
-            full_name = f"{first_name} {last_name}"
+            full_name = name_registry.unique_name(
+                lambda: f"{generate_character_name(gender)} "
+                        f"{_generate_base_name(CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES, middle_chance=0.4)}")
             
             role = roles[i]
             char = Character(full_name, role)

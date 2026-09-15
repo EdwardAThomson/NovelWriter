@@ -2,7 +2,9 @@ import random
 import json
 from datetime import datetime
 
-class MysteryCharacter:
+from .name_utils import DictAccessMixin, NameRegistry
+
+class MysteryCharacter(DictAccessMixin):
     """Character class for Mystery genre with proper title and family handling"""
     
     # Mystery-specific title lists
@@ -246,9 +248,9 @@ def generate_mystery_first_name(gender=None):
         "Sarah", "Kate", "Emma", "Lisa", "Anna", "Jane", "Mary", "Susan", "Linda", "Carol",
         "Nancy", "Beth", "Amy", "Julie", "Helen", "Ruth", "Joan", "Diane", "Laura", "Grace",
         "Jennifer", "Patricia", "Elizabeth", "Barbara", "Margaret", "Dorothy", "Sandra",
-        "Ashley", "Kimberly", "Emily", "Donna", "Michelle", "Carol", "Amanda", "Melissa",
-        "Deborah", "Stephanie", "Rebecca", "Sharon", "Cynthia", "Kathleen", "Amy", "Angela",
-        "Brenda", "Emma", "Olivia", "Cynthia", "Marie", "Janet", "Catherine", "Frances"
+        "Ashley", "Kimberly", "Emily", "Donna", "Michelle", "Theresa", "Amanda", "Melissa",
+        "Deborah", "Stephanie", "Rebecca", "Sharon", "Cynthia", "Kathleen", "Gloria", "Angela",
+        "Brenda", "Vivian", "Olivia", "Rosemary", "Marie", "Janet", "Catherine", "Frances"
     ]
     
     if gender == "Male":
@@ -269,8 +271,8 @@ def generate_mystery_last_name():
         "Strong", "Bold", "Brave", "True", "Just", "Fair", "Good", "Best", "Prime",
         "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
         "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson",
-        "Thomas", "Taylor", "Moore", "Jackson", "Martin", "Lee", "Perez", "Thomson",
-        "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson", "Walker"
+        "Thomas", "Taylor", "Mercer", "Jackson", "Martin", "Lee", "Perez", "Thomson",
+        "Whitfield", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson", "Walker"
     ]
     
     return random.choice(last_names)
@@ -510,14 +512,16 @@ def generate_mystery_main_characters(num_characters=5, female_percentage=50, mal
         }
     }
     
+    # One registry per cast so no two characters share a name.
+    name_registry = NameRegistry()
+
     for i in range(num_characters):
         # Generate gender using weighted random selection (same as SciFi generator)
         gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
         
         # Generate name
-        first_name = generate_mystery_first_name(gender)
-        last_name = generate_mystery_last_name()
-        full_name = f"{first_name} {last_name}"
+        full_name = name_registry.unique_name(
+            lambda: f"{generate_mystery_first_name(gender)} {generate_mystery_last_name()}")
         
         role = roles[i] if i < len(roles) else "supporting"
         char = MysteryCharacter(full_name, role)

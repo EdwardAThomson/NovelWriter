@@ -1,10 +1,12 @@
 from .FantasyGenerator import generate_character_name, generate_character_surname
+from .name_utils import DictAccessMixin, NameRegistry
+
 import random
 import json
 from datetime import datetime
 import re
 
-class FantasyCharacter:
+class FantasyCharacter(DictAccessMixin):
     # Class-level title lists for fantasy settings
     MILITARY_TITLES = {
         "high": {
@@ -32,7 +34,7 @@ class FantasyCharacter:
         },
         "mid": {
             "male": ["Lord", "Baron", "Count", "Viscount", "Earl"],
-            "female": ["Lady", "Baroness", "Countess", "Viscountess", "Countess"],
+            "female": ["Lady", "Baroness", "Countess", "Viscountess", "Marchioness"],
             "neutral": ["Noble", "Highborn", "Heir", "Scion"]
         },
         "low": {
@@ -549,6 +551,9 @@ def generate_fantasy_main_characters(num_characters=3, female_percentage=50, mal
     antagonist_faction = None
     supporting_character_count = 0
 
+    # One registry per cast so no two characters share a name.
+    name_registry = NameRegistry()
+
     for i in range(min(num_characters, len(roles))):
         try:
             # Generate gender first
@@ -561,9 +566,8 @@ def generate_fantasy_main_characters(num_characters=3, female_percentage=50, mal
                 race = "Human"
             
             # Generate name using FantasyGenerator functions
-            first_name = generate_character_name(gender)
-            last_name = generate_character_surname()
-            full_name = f"{first_name} {last_name}"
+            full_name = name_registry.unique_name(
+                lambda: f"{generate_character_name(gender)} {generate_character_surname()}")
             
             role = roles[i]
             char = FantasyCharacter(full_name, role)

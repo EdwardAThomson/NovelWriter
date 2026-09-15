@@ -2,6 +2,7 @@ import json
 import random
 from datetime import datetime
 from .HorrorGenerator import generate_horror_name, HORROR_FIRST_NAMES, HORROR_SURNAMES
+from .name_utils import DictAccessMixin, NameRegistry
 
 # Horror-specific character roles and attributes
 HORROR_ROLES = ["protagonist", "deuteragonist", "antagonist", "supporting", "minor"]
@@ -164,7 +165,7 @@ HORROR_SANITY_LEVELS = [
     "Completely Shattered"
 ]
 
-class HorrorCharacter:
+class HorrorCharacter(DictAccessMixin):
     """Represents a character in a horror story."""
     
     def __init__(self, name, gender, role="supporting"):
@@ -279,13 +280,16 @@ def generate_horror_main_characters(num_characters=5, female_percentage=50, male
     antagonist_faction = None
     supporting_character_count = 0
     
+    # One registry per cast so no two characters share a name.
+    name_registry = NameRegistry()
+
     for i in range(min(num_characters, len(roles))):
         try:
             # Generate gender using weights
-            gender = random.choices(["female", "male"], weights=[female_weight, male_weight], k=1)[0]
-            
+            gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
+
             # Generate name
-            name, _ = generate_horror_name(gender)
+            name = name_registry.unique_name(lambda: generate_horror_name(gender)[0])
             
             # Assign role
             role = roles[i]

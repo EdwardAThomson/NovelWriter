@@ -2,13 +2,17 @@ import random
 import json
 from datetime import datetime
 
+from .name_utils import CharacterRecord, NameRegistry, as_dict
+
 def generate_western_names():
     """Generate names suitable for western characters"""
+    # Given names only - "Sheriff", "Marshal", "Judge" and the rest are ranks
+    # the story assigns, not names, and read as nonsense in "Sheriff Creek".
     first_names_male = [
         "Jake", "Cole", "Wyatt", "Jesse", "Colt", "Buck", "Hank", "Wade", "Clay", "Jed",
         "Luke", "Sam", "Tom", "Bill", "Jack", "Frank", "Joe", "Ben", "Matt", "Dan",
         "Clint", "Duke", "Rex", "Cash", "Tex", "Beau", "Zeke", "Ike", "Gus", "Bart",
-        "Sheriff", "Marshal", "Deputy", "Judge", "Doc", "Preacher", "Captain", "Major"
+        "Amos", "Cyrus", "Eli", "Hollis", "Levi", "Mose", "Silas", "Virgil"
     ]
     
     first_names_female = [
@@ -276,19 +280,18 @@ def generate_western_main_characters(num_characters=5, female_percentage=50, mal
     antagonist_faction = None
     supporting_character_count = 0
     
+    # One registry per cast so no two characters share a name.
+    name_registry = NameRegistry()
+
     for i in range(min(num_characters, len(roles))):
         try:
             # Generate gender using weights
             gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
             
             # Select name based on gender
-            if gender == "Female":
-                first_name = random.choice(first_names_female)
-            else:
-                first_name = random.choice(first_names_male)
-            
-            last_name = random.choice(last_names)
-            name = f"{first_name} {last_name}"
+            name = name_registry.unique_name(
+                lambda: f"{random.choice(first_names_female if gender == 'Female' else first_names_male)} "
+                        f"{random.choice(last_names)}")
             
             # Assign role
             role = roles[i]
@@ -361,7 +364,8 @@ def generate_western_main_characters(num_characters=5, female_percentage=50, mal
                 character["faction"] = territory["faction"]
                 character["faction_type"] = territory["faction_type"]
             
-            characters.append(character)
+            # Wrapped so consumers can use either char["name"] or char.name.
+            characters.append(CharacterRecord(character))
             
         except Exception as e:
             print(f"Error generating character {i} ({role}): {e}")
@@ -416,7 +420,7 @@ def save_western_characters_to_file(characters, filename="western_characters.jso
     relationships = generate_western_relationships(characters)
     
     data = {
-        "characters": characters,
+        "characters": [as_dict(char) for char in characters],
         "relationships": relationships,
         "metadata": {
             "generation_date": datetime.now().isoformat(),

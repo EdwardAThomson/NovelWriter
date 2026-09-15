@@ -2,14 +2,16 @@ import random
 import json
 from datetime import datetime
 
+from .name_utils import CharacterRecord, NameRegistry, as_dict
+
 def generate_romance_names():
     """Generate names suitable for romance characters"""
     first_names_male = [
         "Alexander", "Sebastian", "Nicholas", "Christopher", "Benjamin", "Jonathan", "Matthew", "Andrew",
         "Gabriel", "Daniel", "Michael", "William", "James", "David", "Robert", "Thomas", "Charles",
         "Anthony", "Mark", "Steven", "Kevin", "Brian", "Edward", "Ronald", "Timothy", "Jason",
-        "Jeffrey", "Ryan", "Jacob", "Gary", "Nicholas", "Eric", "Stephen", "Jonathan", "Larry",
-        "Justin", "Scott", "Brandon", "Frank", "Gregory", "Raymond", "Samuel", "Patrick", "Jack"
+        "Jeffrey", "Ryan", "Jacob", "Gary", "Vincent", "Eric", "Stephen", "Julian", "Larry",
+        "Justin", "Marcus", "Brandon", "Frank", "Gregory", "Raymond", "Samuel", "Patrick", "Jack"
     ]
     
     first_names_female = [
@@ -22,7 +24,7 @@ def generate_romance_names():
     
     last_names = [
         "Anderson", "Thompson", "Wilson", "Martinez", "Taylor", "Moore", "Jackson", "Martin",
-        "Lee", "Perez", "Thompson", "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis",
+        "Lee", "Perez", "Brooks", "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis",
         "Robinson", "Walker", "Young", "Allen", "King", "Wright", "Scott", "Torres", "Nguyen",
         "Hill", "Flores", "Green", "Adams", "Nelson", "Baker", "Hall", "Rivera", "Campbell",
         "Mitchell", "Carter", "Roberts", "Gomez", "Phillips", "Evans", "Turner", "Diaz", "Parker",
@@ -280,19 +282,18 @@ def generate_romance_main_characters(num_characters=5, female_percentage=50, mal
     love_interest_group = None
     supporting_character_count = 0
     
+    # One registry per cast so no two characters share a name.
+    name_registry = NameRegistry()
+
     for i in range(min(num_characters, len(roles))):
         try:
             # Generate gender using weights
             gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
             
             # Select name based on gender
-            if gender == "Female":
-                first_name = random.choice(first_names_female)
-            else:
-                first_name = random.choice(first_names_male)
-            
-            last_name = random.choice(last_names)
-            name = f"{first_name} {last_name}"
+            name = name_registry.unique_name(
+                lambda: f"{random.choice(first_names_female if gender == 'Female' else first_names_male)} "
+                        f"{random.choice(last_names)}")
             
             # Assign role
             role = roles[i]
@@ -364,7 +365,8 @@ def generate_romance_main_characters(num_characters=5, female_percentage=50, mal
                 character["social_group"] = venue["social_group"]
                 character["group_type"] = venue["group_type"]
             
-            characters.append(character)
+            # Wrapped so consumers can use either char["name"] or char.name.
+            characters.append(CharacterRecord(character))
             
         except Exception as e:
             print(f"Error generating character {i} ({role}): {e}")
@@ -420,7 +422,7 @@ def save_romance_characters_to_file(characters, filename="romance_characters.jso
     relationships = generate_romance_relationships(characters)
     
     data = {
-        "characters": characters,
+        "characters": [as_dict(char) for char in characters],
         "relationships": relationships,
         "metadata": {
             "generation_date": datetime.now().isoformat(),

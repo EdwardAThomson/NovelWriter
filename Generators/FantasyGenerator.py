@@ -4,6 +4,13 @@ import os
 from datetime import datetime
 import re
 
+from .name_utils import (
+    default_registry,
+    pick_gender,
+    pick_title_for_gender,
+    title_for_gender,
+)
+
 # --- Fantasy Name Generation System ---
 
 # Syllable-based name generation for fantasy settings
@@ -277,31 +284,27 @@ FANTASY_RACES = [
     "Human", "Elf", "Dwarf", "Halfling", "Gnome", "Half-Elf", "Half-Orc", "Tiefling", "Dragonborn"
 ]
 
-def _generate_named_character(title_list, role, specific_title=None, race=None, female_percentage=50, male_percentage=50):
+def _generate_named_character(title_list, role, specific_title=None, race=None, female_percentage=50, male_percentage=50, registry=None):
     """Generates a fantasy character with a name, title, role, and optional race."""
-    first_name = generate_character_name()
-    last_name = generate_character_surname()
-    
-    title = specific_title if specific_title else random.choice(title_list)
+    # Gender is settled first so that both the name and the title can match it.
+    gender = pick_gender(female_percentage, male_percentage,
+                         context="FANTASY_GEN/_generate_named_character")
 
-    # Validate and calculate gender weights
-    female_weight = 0.5  # Default
-    male_weight = 0.5    # Default
+    if registry is None:
+        registry = default_registry()
 
-    if not (0 <= female_percentage <= 100 and 
-            0 <= male_percentage <= 100 and 
-            (female_percentage + male_percentage) == 100):
-        print(f"FANTASY_GEN/_generate_named_character: Invalid gender percentages (F:{female_percentage}%, M:{male_percentage}%). Defaulting to 50/50.")
+    full_name = registry.unique_name(
+        lambda: f"{generate_character_name(gender)} {generate_character_surname()}")
+    first_name, last_name = full_name.split(" ", 1)
+
+    if specific_title:
+        title = title_for_gender(specific_title, gender)
     else:
-        female_weight = female_percentage / 100.0
-        male_weight = male_percentage / 100.0
+        title = pick_title_for_gender(title_list, gender)
 
-    gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
-    
     # Add race if specified
     character_race = race if race else "Human"  # Default to Human if no race specified
-    
-    full_name = f"{first_name} {last_name}"
+
     display_name = f"{title} {full_name}".strip() if title else full_name
 
     return {
@@ -828,6 +831,10 @@ def generate_fantasy_world(num_factions=5, include_races=False, female_percentag
     
     Returns a list of faction dictionaries configured for a fantasy setting.
     """
+    # Fresh registry per world, so names are unique across the faction roster
+    # without carrying over from earlier generation runs.
+    default_registry().clear()
+
     faction_profiles = load_faction_profiles("Generators/fantasy_faction_profiles.json")
     
     # Adjust faction weights based on world type

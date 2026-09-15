@@ -4,6 +4,13 @@ import os
 from datetime import datetime
 import re
 
+from .name_utils import (
+    default_registry,
+    pick_gender,
+    pick_title_for_gender,
+    title_for_gender,
+)
+
 # --- Improved Name Generation System ---
 
 # Syllable-based name generation for better phonetic flow
@@ -134,13 +141,19 @@ def generate_sci_fi_name(syllable_dict, max_syllables=2, min_length=3, max_lengt
     return (start_syl + end_syl).capitalize()
 
 def generate_character_name(gender=None):
-    """Generate a character first name (short and pronounceable), optionally gender-specific."""
+    """
+    Generate a character first name (short and pronounceable), optionally
+    gender-specific.
+
+    Each name appears in one pool only, so a character's recorded gender and
+    their name never contradict each other.
+    """
     if gender == "Male":
         # Generate male-sounding sci-fi names
         male_names = [
-            "Zephyr", "Orion", "Vex", "Kael", "Dex", "Jax", "Raven", "Phoenix", "Cyrus", "Axel",
-            "Zander", "Knox", "Rex", "Blaze", "Sage", "Kai", "Neo", "Zion", "Lex", "Vance",
-            "Ryker", "Jett", "Zane", "Colt", "Dash", "Flux", "Nyx", "Onyx", "Raze", "Vex",
+            "Zephyr", "Orion", "Vex", "Kael", "Dex", "Jax", "Corvin", "Talon", "Cyrus", "Axel",
+            "Zander", "Knox", "Rex", "Blaze", "Rion", "Kai", "Neo", "Zion", "Lex", "Vance",
+            "Ryker", "Jett", "Zane", "Colt", "Dash", "Flux", "Draven", "Onyx", "Raze", "Cassius",
             "Ares", "Atlas", "Caspian", "Dante", "Echo", "Felix", "Gideon", "Hunter", "Ivan", "Jasper"
         ]
         return random.choice(male_names)
@@ -339,30 +352,24 @@ def _generate_base_name(prefixes, middles, suffixes, middle_chance=0.5):
     return prefix + middle_piece + suffix_piece
 
 # Internal helper to create a single named character dictionary
-def _generate_named_character(title_list, role, specific_title=None, female_percentage=50, male_percentage=50):
+def _generate_named_character(title_list, role, specific_title=None, female_percentage=50, male_percentage=50, registry=None):
     """Generates a character with a name, title, and role, using numerical gender percentages."""
-    first_name = generate_character_name()
-    last_name = generate_character_surname()
-    
-    title = specific_title if specific_title else random.choice(title_list)
+    # Gender is settled first so that both the name and the title can match it.
+    gender = pick_gender(female_percentage, male_percentage,
+                         context="SCIFI_GEN/_generate_named_character")
 
-    # Validate and calculate gender weights directly from input percentages
-    female_weight = 0.5  # Default
-    male_weight = 0.5    # Default
+    if registry is None:
+        registry = default_registry()
 
-    if not (0 <= female_percentage <= 100 and 
-            0 <= male_percentage <= 100 and 
-            (female_percentage + male_percentage) == 100):
-        # This print might be noisy if called many times; consider logging for frequent calls
-        print(f"SCIFI_GEN/_generate_named_character: Invalid gender percentages (F:{female_percentage}%, M:{male_percentage}%). Defaulting to 50/50.")
+    full_name = registry.unique_name(
+        lambda: f"{generate_character_name(gender)} {generate_character_surname()}")
+    first_name, last_name = full_name.split(" ", 1)
+
+    if specific_title:
+        title = title_for_gender(specific_title, gender)
     else:
-        female_weight = female_percentage / 100.0
-        male_weight = male_percentage / 100.0
-        # Optional: print(f"SCIFI_GEN/_generate_named_character: Using F:{female_percentage}%, M:{male_percentage}%")
+        title = pick_title_for_gender(title_list, gender)
 
-    gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
-    
-    full_name = f"{first_name} {last_name}"
     display_name = f"{title} {full_name}".strip() if title else full_name # Handle cases with no title
 
     return {
@@ -710,6 +717,10 @@ def generate_universe(num_factions=5, female_percentage=50, male_percentage=50):
     
     Returns a list of faction dictionaries configured for a space opera setting.
     """
+    # Fresh registry per world, so names are unique across the faction roster
+    # without carrying over from earlier generation runs.
+    default_registry().clear()
+
     faction_profiles = load_faction_profiles("Generators/faction_profiles.json")
     factions = []
     for _ in range(num_factions):

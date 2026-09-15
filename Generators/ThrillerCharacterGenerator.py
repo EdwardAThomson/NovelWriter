@@ -2,27 +2,31 @@ import random
 import json
 from datetime import datetime
 
+from .name_utils import CharacterRecord, NameRegistry, as_dict
+
 def generate_thriller_names():
     """Generate names suitable for thriller characters"""
+    # Given names only - ranks like "Agent" or "Captain" are titles, not names,
+    # and produced characters called "Agent Noble" or "Commander Bear".
     first_names_male = [
         "Jack", "Ryan", "Marcus", "Cole", "Blake", "Kane", "Rex", "Max", "Zane", "Jax",
-        "Hunter", "Chase", "Steel", "Phoenix", "Storm", "Blade", "Raven", "Wolf", "Hawk", "Fox",
+        "Cassian", "Chase", "Phoenix", "Rhys", "Callum", "Gabriel", "Julian", "Miles", "Owen", "Sean",
         "Victor", "Vincent", "Damien", "Adrian", "Ethan", "Nathan", "Logan", "Derek", "Tyler", "Kyle",
-        "Agent", "Detective", "Captain", "Major", "Colonel", "Commander", "Director", "Chief"
+        "Trent", "Wesley", "Xavier", "Dominic", "Elliot", "Grant", "Reid", "Silas"
     ]
     
     first_names_female = [
-        "Alex", "Sam", "Jordan", "Casey", "Riley", "Taylor", "Morgan", "Avery", "Quinn", "Blake",
-        "Raven", "Phoenix", "Storm", "Jade", "Scarlett", "Ivy", "Luna", "Nova", "Aria", "Zara",
+        "Alex", "Sam", "Jordan", "Casey", "Riley", "Taylor", "Morgan", "Avery", "Quinn", "Sloane",
+        "Jade", "Scarlett", "Ivy", "Luna", "Nova", "Aria", "Zara", "Delilah", "Marlowe", "Wren",
         "Victoria", "Natasha", "Sophia", "Isabella", "Gabrielle", "Anastasia", "Valentina", "Serena",
-        "Agent", "Detective", "Captain", "Major", "Colonel", "Commander", "Director", "Chief"
+        "Camille", "Elena", "Freya", "Imogen", "Nadia", "Petra", "Simone", "Tessa"
     ]
     
     last_names = [
         "Cross", "Stone", "Steel", "Black", "White", "Gray", "Sharp", "Quick", "Swift", "Strong",
         "Hunter", "Walker", "Knight", "King", "Queen", "Prince", "Duke", "Noble", "Savage", "Wild",
         "Storm", "Rain", "Snow", "Frost", "Burns", "Flame", "Blaze", "Spark", "Thunder", "Lightning",
-        "Shadow", "Dark", "Light", "Bright", "Clear", "Sharp", "Edge", "Blade", "Arrow", "Bolt",
+        "Shadow", "Dark", "Light", "Bright", "Clear", "Keen", "Edge", "Blade", "Arrow", "Bolt",
         "Wolf", "Fox", "Hawk", "Eagle", "Raven", "Crow", "Bear", "Lion", "Tiger", "Panther"
     ]
     
@@ -276,19 +280,18 @@ def generate_thriller_main_characters(num_characters=5, female_percentage=50, ma
     antagonist_agency = None
     supporting_character_count = 0
     
+    # One registry per cast so no two characters share a name.
+    name_registry = NameRegistry()
+
     for i in range(min(num_characters, len(roles))):
         try:
             # Generate gender using weights
             gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
             
             # Select name based on gender
-            if gender == "Female":
-                first_name = random.choice(first_names_female)
-            else:
-                first_name = random.choice(first_names_male)
-            
-            last_name = random.choice(last_names)
-            name = f"{first_name} {last_name}"
+            name = name_registry.unique_name(
+                lambda: f"{random.choice(first_names_female if gender == 'Female' else first_names_male)} "
+                        f"{random.choice(last_names)}")
             
             # Assign role
             role = roles[i]
@@ -361,7 +364,8 @@ def generate_thriller_main_characters(num_characters=5, female_percentage=50, ma
                 character["agency"] = hq["agency"]
                 character["agency_type"] = hq["agency_type"]
             
-            characters.append(character)
+            # Wrapped so consumers can use either char["name"] or char.name.
+            characters.append(CharacterRecord(character))
             
         except Exception as e:
             print(f"Error generating character {i} ({role}): {e}")
@@ -417,7 +421,7 @@ def save_thriller_characters_to_file(characters, filename="thriller_characters.j
     relationships = generate_thriller_relationships(characters)
     
     data = {
-        "characters": characters,
+        "characters": [as_dict(char) for char in characters],
         "relationships": relationships,
         "metadata": {
             "generation_date": datetime.now().isoformat(),

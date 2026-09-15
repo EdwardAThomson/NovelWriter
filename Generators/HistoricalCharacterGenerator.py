@@ -1,10 +1,11 @@
 from .HistoricalGenerator import generate_faction_name, ADJECTIVES
+from .name_utils import DictAccessMixin, NameRegistry
 import random
 import json
 from datetime import datetime
 import re
 
-class HistoricalCharacter:
+class HistoricalCharacter(DictAccessMixin):
     # Class-level title lists for historical settings
     NOBLE_TITLES = {
         "high": {
@@ -338,7 +339,7 @@ def generate_historical_name(gender=None):
         # Ancient/Classical
         "Cleopatra", "Livia", "Julia", "Octavia", "Agrippina", "Lucretia", "Cornelia", "Portia", "Calpurnia", "Fulvia",
         # Various periods
-        "Anastasia", "Katarina", "Francesca", "Lucrezia", "Bianca", "Violante", "Seraphina", "Arabella", "Rosalind", "Cordelia"
+        "Anastasia", "Katarina", "Francesca", "Lucrezia", "Bianca", "Violante", "Seraphina", "Arabella", "Rosalind", "Ottavia"
     ]
     
     if gender == "Male":
@@ -355,7 +356,7 @@ def generate_historical_surname():
         # English/European nobility
         "Plantagenet", "Tudor", "Stuart", "Windsor", "Medici", "Borgia", "Habsburg", "Bourbon", "Valois", "Anjou",
         # Common historical surnames
-        "Blackwood", "Ashford", "Pemberton", "Worthington", "Kensington", "Harrington", "Wellington", "Covington", "Huntington", "Lexington","Wellington",
+        "Blackwood", "Ashford", "Pemberton", "Worthington", "Kensington", "Harrington", "Wellington", "Covington", "Huntington", "Lexington", "Abbington",
         # Occupational/descriptive
         "Blacksmith", "Fletcher", "Cooper", "Mason", "Baker", "Miller", "Carpenter", "Weaver", "Tanner", "Merchant",
         # Geographic
@@ -650,15 +651,17 @@ def generate_historical_main_characters(num_characters=3, female_percentage=50, 
     antagonist_faction = None
     supporting_character_count = 0
 
+    # One registry per cast so no two characters share a name.
+    name_registry = NameRegistry()
+
     for i in range(min(num_characters, len(roles))):
         try:
             # Generate gender first
             gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
             
             # Generate name
-            first_name = generate_historical_name(gender)
-            last_name = generate_historical_surname()
-            full_name = f"{first_name} {last_name}"
+            full_name = name_registry.unique_name(
+                lambda: f"{generate_historical_name(gender)} {generate_historical_surname()}")
             
             role = roles[i]
             char = HistoricalCharacter(full_name, role)
