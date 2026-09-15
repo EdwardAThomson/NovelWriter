@@ -155,3 +155,81 @@ def save_prompt_to_file(output_dir, base_name, content, subfolder="prompts", ext
         # The caller will log this failure contextually.
         # logger.error(f"Internal error in save_prompt_to_file for prompt '{base_name}': {e}", exc_info=True) # Removed module log
         return None
+
+
+# --- Character roster for writing prompts -----------------------------------
+
+# characters.json lives under story/lore; the flat path is the older layout.
+_CHARACTER_FILE_LOCATIONS = [
+    os.path.join("story", "lore", "characters.json"),
+    "characters.json",
+]
+
+
+def resolve_characters_file(output_dir):
+    """Return the path to this project's characters.json, or None."""
+    for relative_path in _CHARACTER_FILE_LOCATIONS:
+        candidate = os.path.join(output_dir, relative_path)
+        if os.path.exists(candidate):
+            return candidate
+    return None
+
+
+def summarize_character_roster(output_dir, genre=None):
+    """
+    Build the "Key Characters" block handed to the prose-writing prompts.
+
+    Each character is listed under their single canonical name, with their
+    title as a separate line, followed by a note on how this genre addresses
+    people - so the prose can vary between "Sheriff True" and "Gus" without the
+    roster ever naming the same character two different ways.
+
+    Returns (summary_text, characters_path). `characters_path` is None when no
+    roster was found.
+    """
+    from Generators.name_utils import address_style_for
+
+    path = resolve_characters_file(output_dir)
+    if path is None:
+        return "Character roster not available.", None
+
+    data = read_json(path)
+    characters = None
+    if isinstance(data, dict):
+        characters = data.get("characters")
+    elif isinstance(data, list):
+        characters = data
+    if not characters:
+        return "Character roster not available.", path
+
+    summaries = []
+    for char_info in characters:
+        details = [f"\n\n Name: {char_info.get('name', 'N/A')}\n"]
+        title = char_info.get("title")
+        if title:
+            details.append(f" - Title: {title}\n")
+        details.append(f" - Role: {char_info.get('role', 'N/A')}\n")
+        details.append(f" - Gender: {char_info.get('gender', 'N/A')}\n")
+        details.append(f" - Age: {char_info.get('age', 'N/A')}\n")
+        profession = char_info.get("profession") or char_info.get("occupation")
+        if profession:
+            details.append(f" - Profession: {profession}\n")
+        details.append(f" - Appearance: {char_info.get('appearance_summary', 'N/A')}\n")
+        goals = char_info.get('goals', [])
+        if goals:
+            details.append(f" -    Primary Goal: {goals[0]}\n")
+        strengths = char_info.get('strengths', [])
+        if strengths:
+            details.append(f" -    Key Strength: {strengths[0]}\n")
+        flaws = char_info.get('flaws', [])
+        if flaws:
+            details.append(f" -    Key Flaw: {flaws[0]}\n")
+        backstory = char_info.get('backstory_summary', '')
+        if backstory:
+            details.append(f" -    Backstory Summary: {backstory}")
+        summaries.append("\n".join(details))
+
+    summary = ("Key Characters:\n" + "\n".join(summaries)
+               + "\n\n## Naming and Forms of Address:\n"
+               + address_style_for(genre))
+    return summary, path

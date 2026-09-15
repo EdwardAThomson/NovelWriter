@@ -2,7 +2,13 @@ from tkinter import ttk, messagebox
 from core.gui.notifications import show_success, show_error
 from core.generation.ai_helper import send_prompt, get_backend
 import re
-from core.generation.helper_fns import open_file, write_file, save_prompt_to_file, read_json
+from core.generation.helper_fns import (
+    open_file,
+    write_file,
+    save_prompt_to_file,
+    read_json,
+    summarize_character_roster,
+)
 import os
 from core.gui.parameters import STRUCTURE_SECTIONS_MAP # Import for section mapping
 
@@ -72,6 +78,13 @@ class ChapterWriting:
         if self.app and hasattr(self.app, 'param_ui') and hasattr(self.app.param_ui, 'add_callback'):
             self.app.param_ui.add_callback(self._update_ui_based_on_parameters)
         self._update_ui_based_on_parameters() # Set initial UI state
+
+    def _current_genre(self):
+        """The story's genre, used to pick the right forms of address for the prose."""
+        try:
+            return self.app.param_ui.get_current_parameters().get("genre")
+        except Exception:
+            return None
 
     def _update_ui_based_on_parameters(self):
         """Updates UI elements based on current story parameters."""
@@ -249,31 +262,12 @@ class ChapterWriting:
 
             character_roster_summary = "Character roster not available."
             try:
-                characters_json_path = os.path.join(output_dir, "characters.json")
-                if os.path.exists(characters_json_path):
-                    characters_data = read_json(characters_json_path) # Assuming read_json is in helper_fns
-                    if characters_data and "characters" in characters_data:
-                        summaries = []
-                        for char_info in characters_data["characters"]:
-                            details = [f"\n\n Name: {char_info.get('name', 'N/A')}\n"]
-                            details.append(f" - Role: {char_info.get('role', 'N/A')}\n")
-                            details.append(f" - Gender: {char_info.get('gender', 'N/A')}\n")
-                            details.append(f" - Age: {char_info.get('age', 'N/A')}\n")
-                            details.append(f" - Appearance: {char_info.get('appearance_summary', 'N/A')}\n")
-                            goals = char_info.get('goals', [])
-                            if goals: details.append(f" -    Primary Goal: {goals[0] if goals else 'N/A'}\n")
-                            strengths = char_info.get('strengths', [])
-                            if strengths: details.append(f" -    Key Strength: {strengths[0] if strengths else 'N/A'}\n")
-                            flaws = char_info.get('flaws', [])
-                            if flaws: details.append(f" -    Key Flaw: {flaws[0] if flaws else 'N/A'}\n")
-                            backstory = char_info.get('backstory_summary', '')
-                            if backstory: details.append(f" -    Backstory Summary: {backstory}")
-                            summaries.append("\n".join(details))
-                        if summaries:
-                            character_roster_summary = "Key Characters:\n" + "\n".join(summaries)
-                            self.app.logger.info(f"Loaded and summarized character roster from {characters_json_path}")
+                character_roster_summary, characters_json_path = summarize_character_roster(
+                    output_dir, genre=self._current_genre())
+                if characters_json_path:
+                    self.app.logger.info(f"Loaded and summarized character roster from {characters_json_path}")
             except Exception as e:
-                self.app.logger.warning(f"Could not load or process character roster from {characters_json_path}: {e}", exc_info=True)
+                self.app.logger.warning(f"Could not load or process character roster: {e}", exc_info=True)
             # --- Load Faction Summary ---
             faction_summary_info = "Faction information not available."
             try:
@@ -544,30 +538,10 @@ class ChapterWriting:
             # --- Load Character Roster Summary ---
             character_roster_summary = "Character roster not available."
             try:
-                characters_json_path = os.path.join(output_dir, "story", "lore", "characters.json")
-                if os.path.exists(characters_json_path):
-                    characters_data = read_json(characters_json_path)
-                    if characters_data and "characters" in characters_data:
-                        # (Identical summarization logic as in _write_short_story_prose)
-                        summaries = []
-                        for char_info in characters_data["characters"]:
-                            details = [f"\n\n Name: {char_info.get('name', 'N/A')}\n"]
-                            details.append(f" - Role: {char_info.get('role', 'N/A')}\n")
-                            details.append(f" - Gender: {char_info.get('gender', 'N/A')}\n")
-                            details.append(f" - Age: {char_info.get('age', 'N/A')}\n")
-                            details.append(f" - Appearance: {char_info.get('appearance_summary', 'N/A')}\n")
-                            goals = char_info.get('goals', [])
-                            if goals: details.append(f" -    Primary Goal: {goals[0] if goals else 'N/A'}\n")
-                            strengths = char_info.get('strengths', [])
-                            if strengths: details.append(f" -    Key Strength: {strengths[0] if strengths else 'N/A'}\n")
-                            flaws = char_info.get('flaws', [])
-                            if flaws: details.append(f" -    Key Flaw: {flaws[0] if flaws else 'N/A'}\n")
-                            backstory = char_info.get('backstory_summary', '')
-                            if backstory: details.append(f" -    Backstory Summary: {backstory}")
-                            summaries.append("\n".join(details))
-                        if summaries:
-                            character_roster_summary = "Key Characters:\n" + "\n".join(summaries)
-                            self.app.logger.info(f"Loaded character roster for Chapter {target_chapter_number_global}.")
+                character_roster_summary, characters_json_path = summarize_character_roster(
+                    output_dir, genre=self._current_genre())
+                if characters_json_path:
+                    self.app.logger.info(f"Loaded character roster for Chapter {target_chapter_number_global}.")
             except Exception as e_char_load:
                 self.app.logger.warning(f"Could not load/process character roster for Chapter {target_chapter_number_global}: {e_char_load}", exc_info=True)
 

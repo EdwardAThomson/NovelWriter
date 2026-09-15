@@ -210,7 +210,7 @@ WESTERN_PROFESSION_TITLES = {
     "Soldier": "Trooper",
     "Indian Agent": "Agent",
     "Newspaper Editor": "Editor",
-    "Banker": "Mister",
+    "Banker": "Mr.",
 }
 
 
@@ -219,9 +219,9 @@ def title_for_profession(profession, gender):
     title = WESTERN_PROFESSION_TITLES.get(profession)
     if not title:
         return ""
-    # "Miss"/"Mister" depend on the character rather than the job.
-    if title in ("Miss", "Mister"):
-        return "Miss" if normalize_gender(gender) == "Female" else "Mister"
+    # "Miss"/"Mr." depend on the character rather than the job.
+    if title in ("Miss", "Mr."):
+        return "Miss" if normalize_gender(gender) == "Female" else "Mr."
     return title_for_gender(title, gender)
 
 

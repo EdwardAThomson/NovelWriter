@@ -395,7 +395,7 @@ def test_western_honorific_follows_gender():
     from Generators.WesternCharacterGenerator import title_for_profession
 
     assert title_for_profession("Teacher", "Female") == "Miss"
-    assert title_for_profession("Banker", "Male") == "Mister"
+    assert title_for_profession("Banker", "Male") == "Mr."
 
 
 @pytest.mark.parametrize("genre", ["Western", "Thriller", "Romance"])
@@ -542,3 +542,106 @@ def test_saved_characters_keep_every_name_field(genre, tmp_path):
         assert rebuilt == entry["name"]
         if entry["title"]:
             assert entry["display_name"] == f"{entry['title']} {entry['name']}"
+
+
+# --- One name per character, style carried by the prompt --------------------
+
+def build_project(tmp_path, genre, num_characters=6):
+    """Generate and save a cast into a project directory, returning its path."""
+    lore = tmp_path / "story" / "lore"
+    lore.mkdir(parents=True, exist_ok=True)
+    handler = get_genre_handler(genre)
+    with contextlib.redirect_stdout(io.StringIO()):
+        cast = handler.generate_characters(num_characters=num_characters,
+                                           female_percentage=50, male_percentage=50,
+                                           output_dir=str(tmp_path))
+        handler.save_characters(cast, filename=str(lore / "characters.json"))
+    return cast
+
+
+@pytest.mark.parametrize("genre", GENRES)
+def test_saved_output_names_each_character_once(genre, tmp_path):
+    """
+    A character must not appear under two names in one file.
+
+    `name` is the single identity; `title` is a separate field and
+    `display_name` is derived from the two, never a second identity.
+    """
+    build_project(tmp_path, genre)
+    saved = json.loads((tmp_path / "story" / "lore" / "characters.json").read_text())
+    characters = saved["characters"] if isinstance(saved, dict) else saved
+
+    names = {c["name"] for c in characters}
+    for entry in characters:
+        assert entry["display_name"] in (entry["name"],
+                                         f"{entry['title']} {entry['name']}")
+
+    # Relationships must reference characters by that same canonical name.
+    for relationship in (saved.get("relationships") or []):
+        assert relationship["character1"] in names
+        assert relationship["character2"] in names
+
+
+@pytest.mark.parametrize("genre", GENRES)
+def test_prompt_roster_lists_one_name_and_a_separate_title(genre, tmp_path):
+    """The writing prompt sees each character once, with the title broken out."""
+    from core.generation.helper_fns import summarize_character_roster
+
+    cast = build_project(tmp_path, genre)
+    summary, path = summarize_character_roster(str(tmp_path), genre=genre)
+
+    assert path is not None
+    assert summary.count(" Name: ") == len(cast)
+    for character in cast:
+        data = as_dict(character)
+        assert f" Name: {data['name']}" in summary
+        if data["title"]:
+            assert f" - Title: {data['title']}" in summary
+        # The titled form is never presented as a second name.
+        if data["title"]:
+            assert f" Name: {data['display_name']}" not in summary
+
+
+def test_prompt_roster_carries_the_genre_address_style(tmp_path):
+    from Generators.name_utils import address_style_for
+    from core.generation.helper_fns import summarize_character_roster
+
+    build_project(tmp_path, "Western")
+    summary, _ = summarize_character_roster(str(tmp_path), genre="Western")
+
+    assert "## Naming and Forms of Address:" in summary
+    assert address_style_for("Western") in summary
+
+
+def test_summarize_character_roster_handles_both_layouts(tmp_path):
+    from core.generation.helper_fns import summarize_character_roster
+
+    summary, path = summarize_character_roster(str(tmp_path), genre="Western")
+    assert path is None
+    assert summary == "Character roster not available."
+
+    # The older flat layout still works.
+    (tmp_path / "characters.json").write_text(json.dumps(
+        {"characters": [{"name": "Gus True", "title": "Deputy", "role": "protagonist"}]}))
+    summary, path = summarize_character_roster(str(tmp_path), genre="Western")
+    assert path == str(tmp_path / "characters.json")
+    assert " Name: Gus True" in summary
+    assert " - Title: Deputy" in summary
+
+
+def test_address_style_for_covers_every_genre():
+    from Generators.name_utils import address_style_for
+
+    styles = {genre: address_style_for(genre) for genre in GENRES}
+    assert all(styles.values())
+    # Each genre gets its own guidance rather than the generic fallback.
+    assert len(set(styles.values())) == len(GENRES)
+    # An unknown genre still gets usable guidance.
+    assert address_style_for("Steampunk Noir")
+
+
+def test_western_honorific_is_abbreviated():
+    from Generators.WesternCharacterGenerator import title_for_profession
+
+    assert title_for_profession("Banker", "Male") == "Mr."
+    assert title_for_profession("Banker", "Female") == "Miss"

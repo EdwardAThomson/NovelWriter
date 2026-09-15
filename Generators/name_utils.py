@@ -140,6 +140,86 @@ def pick_title_for_gender(title_list, gender):
     return title_for_gender(random.choice(title_list), gender)
 
 
+# --- How characters are addressed in prose ----------------------------------
+
+# A character is stored under exactly one name, with their title in a separate
+# field, so nothing downstream ever sees the same person under two names. The
+# variety a genre wants - "Sheriff True" in one line and "Gus" in the next -
+# belongs in the prose, so these notes tell the writing prompts how to combine
+# the two fields. They live beside the title tables above so the guidance and
+# the titles cannot drift apart.
+_DEFAULT_ADDRESS_STYLE = (
+    "Characters are listed with their title and full name as separate fields. "
+    "In the prose, use whichever form the moment calls for: the full name when "
+    "a character is first introduced, the title with their surname in formal or "
+    "public settings, and the first name alone between people who know each "
+    "other well. Do not invent names or surnames that are not in the roster."
+)
+
+ADDRESS_STYLES = {
+    "Western": (
+        "Address characters the way a Western does. A character who holds a "
+        "title is usually called by that title and their surname - \"Sheriff "
+        "True\", \"Doc Holliday\", \"Judge Bean\" - and by their first name or "
+        "a nickname among friends and family. Use the full name sparingly: for "
+        "a formal introduction, a wanted poster, or the first time the "
+        "character appears. Untitled characters go by first name or surname as "
+        "the moment suits. Never invent names that are not in the roster."
+    ),
+    "Fantasy": (
+        "Address characters as their station demands. Nobility and titled "
+        "figures are called by title and name in court or formal settings "
+        "(\"Duchess Elara Stonekeeper\"), by title and surname in ordinary "
+        "address, and by first name only by intimates or those of higher rank. "
+        "Commoners use first names. Never invent names not in the roster."
+    ),
+    "Historical Fiction": (
+        "Observe period forms of address. Titled characters are called by title "
+        "and surname, or title and full name on formal occasions; first names "
+        "are reserved for family and close friends, and servants and social "
+        "inferiors use the title. Never invent names not in the roster."
+    ),
+    "Mystery": (
+        "Professional characters are usually addressed by rank and surname "
+        "(\"Detective Cross\", \"District Attorney Marple\"), by full name when "
+        "being introduced or formally identified, and by first name by "
+        "colleagues and family. Never invent names not in the roster."
+    ),
+    "Thriller": (
+        "Operatives and officials are addressed by rank and surname (\"Agent "
+        "Stone\", \"Director Sharp\"), by full name in briefings and official "
+        "identification, and by first name or codename in the field. Never "
+        "invent names not in the roster."
+    ),
+    "Sci-Fi": (
+        "Address characters by rank and surname in service or official contexts "
+        "(\"Commander Jororux\"), by full name on first appearance and in formal "
+        "records, and by first name off duty. Never invent names not in the "
+        "roster."
+    ),
+    "Horror": (
+        "Most characters go by first name or full name. Where a character holds "
+        "a title, use it with their surname in formal or ritual contexts. Never "
+        "invent names not in the roster."
+    ),
+    "Romance": (
+        "Characters are generally on first-name terms; use the full name when "
+        "someone is introduced, and an honorific with the surname (\"Dr. "
+        "Edwards\") in professional settings or when the relationship is still "
+        "formal. Never invent names not in the roster."
+    ),
+}
+
+
+def address_style_for(genre):
+    """
+    Return the note telling the prose model how to address this genre's cast.
+
+    Unknown genres fall back to general guidance rather than no guidance.
+    """
+    return ADDRESS_STYLES.get(genre, _DEFAULT_ADDRESS_STYLE)
+
+
 # --- Unique name allocation -------------------------------------------------
 
 class NameRegistry:
