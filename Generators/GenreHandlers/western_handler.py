@@ -147,7 +147,8 @@ class WesternHandler(BaseGenreHandler):
         return generate_western_main_characters(
             num_characters=num_characters,
             female_percentage=female_percentage,
-            male_percentage=male_percentage
+            male_percentage=male_percentage,
+            output_dir=kwargs.get('output_dir'),
         )
     
     def save_characters(self, characters, filename="western_characters.json"):

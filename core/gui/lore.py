@@ -271,13 +271,15 @@ class Lore:
             self.app.logger.info(f"Generating characters for genre: {genre}")
             
             # Generate characters using the genre handler system
+            output_dir = self.app.get_output_dir()
             try:
                 genre_handler = get_genre_handler(genre)
                 characters = genre_handler.generate_characters(
                     num_characters=num_chars,
                     female_percentage=female_percentage,
                     male_percentage=male_percentage,
-                    include_races=True  # This will be ignored by sci-fi handler, used by fantasy handler
+                    include_races=True,  # This will be ignored by sci-fi handler, used by fantasy handler
+                    output_dir=output_dir  # Lets the generators read this project's factions.json
                 )
             except ValueError as e:
                 self.app.logger.error(f"Unsupported genre for character generation: {genre}. Error: {e}")
@@ -322,9 +324,8 @@ class Lore:
                 self.app.logger.info("MAIN CHARACTER GENDER SUMMARY: No main characters generated to summarize.")
             # --- End Gender Count ---
             
-            # Save to file
-            output_dir = self.app.get_output_dir()
-            
+            # Save to file (output_dir was resolved before generation)
+
             # Use structured directory for characters file
             lore_dir = self.dir_manager.get_path('lore_dir')
             lore_full_path = os.path.join(output_dir, lore_dir)

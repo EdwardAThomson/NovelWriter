@@ -1,5 +1,11 @@
 from .FantasyGenerator import generate_character_name, generate_character_surname
-from .name_utils import DictAccessMixin, NameRegistry
+from .name_utils import (
+    DictAccessMixin,
+    NameRegistry,
+    apply_name_parts,
+    load_faction_data,
+    reserve_person_names,
+)
 
 import random
 import json
@@ -209,9 +215,12 @@ class FantasyCharacter(DictAccessMixin):
 
     @property
     def full_name(self):
-        """Return the character's full name with title if set."""
-        if self.title:
-            return f"{self.title} {self.name}"
+        """
+        The character's first name and surname, without any title.
+
+        Use `display_name` for the titled form; `full_name` means the same
+        thing here as it does in the faction records.
+        """
         return self.name
 
     def get_role_description(self):
@@ -310,7 +319,7 @@ class FantasyCharacter(DictAccessMixin):
                     'gender': child_gender
                 })
 
-def generate_fantasy_main_characters(num_characters=3, female_percentage=50, male_percentage=50, include_races=False):
+def generate_fantasy_main_characters(num_characters=3, female_percentage=50, male_percentage=50, include_races=False, output_dir=None):
     """
     Generate main fantasy characters using the name generation from FantasyGenerator.
     
@@ -344,26 +353,7 @@ def generate_fantasy_main_characters(num_characters=3, female_percentage=50, mal
     fantasy_races = ["Human", "Elf", "Dwarf", "Halfling", "Orc", "Gnome", "Half-Elf", "Dragonborn"]
     
     # Try to load factions data
-    factions_data = None
-    try:
-        with open("current_work/factions.json", 'r') as f:
-            data = json.load(f)
-            # Handle both direct list format and wrapped format
-            if isinstance(data, list):
-                factions_data = data
-            elif isinstance(data, dict) and "factions" in data:
-                factions_data = data["factions"]
-            else:
-                factions_data = data
-            print(f"Loaded factions data: Found {len(factions_data)} factions")
-    except FileNotFoundError:
-        print("No factions file found - characters will be generated without faction affiliations")
-    except json.JSONDecodeError as e:
-        print(f"Error parsing factions.json: {e}")
-        return None
-    except Exception as e:
-        print(f"Unexpected error loading factions: {e}")
-        return None
+    factions_data = load_faction_data(output_dir)
 
     # Get list of all regions if factions exist
     regions = []
@@ -551,8 +541,10 @@ def generate_fantasy_main_characters(num_characters=3, female_percentage=50, mal
     antagonist_faction = None
     supporting_character_count = 0
 
-    # One registry per cast so no two characters share a name.
+    # One registry per cast so no two characters share a name, seeded with
+    # the faction roster so they cannot reuse a name from there either.
     name_registry = NameRegistry()
+    reserve_person_names(name_registry, factions_data)
 
     for i in range(min(num_characters, len(roles))):
         try:
@@ -705,6 +697,9 @@ def generate_fantasy_main_characters(num_characters=3, female_percentage=50, mal
                 char.home_region = homeland["terrain"]
                 char.faction = homeland["faction"]
             
+            # Record first name, surname and the titled display name.
+            apply_name_parts(char, char.name, char.title)
+
             characters.append(char)
             
         except Exception as e:
@@ -789,6 +784,10 @@ def save_fantasy_characters_to_file(characters, filename="fantasy_characters.jso
     for char in characters:
         char_dict = {
             "name": char.name,
+            "first_name": getattr(char, "first_name", ""),
+            "last_name": getattr(char, "last_name", ""),
+            "title": getattr(char, "title", "") or "",
+            "display_name": getattr(char, "display_name", char.name),
             "role": char.role,
             "gender": char.gender,
             "race": char.race,
@@ -806,8 +805,6 @@ def save_fantasy_characters_to_file(characters, filename="fantasy_characters.jso
         }
         
         # Add optional attributes if they exist
-        if char.title:
-            char_dict["title"] = char.title
         if char.occupation:
             char_dict["occupation"] = char.occupation
         if char.faction_role:

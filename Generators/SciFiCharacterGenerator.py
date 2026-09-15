@@ -1,5 +1,11 @@
 from .SciFiGenerator import _generate_base_name, generate_character_name, CHAR_PREFIXES, CHAR_MIDDLES, CHAR_SUFFIXES
-from .name_utils import DictAccessMixin, NameRegistry
+from .name_utils import (
+    DictAccessMixin,
+    NameRegistry,
+    apply_name_parts,
+    load_faction_data,
+    reserve_person_names,
+)
 import random
 import json
 from datetime import datetime
@@ -169,9 +175,12 @@ class Character(DictAccessMixin):
 
     @property
     def full_name(self):
-        """Return the character's full name with title if set."""
-        if self.title:
-            return f"{self.title} {self.name}"
+        """
+        The character's first name and surname, without any title.
+
+        Use `display_name` for the titled form; `full_name` means the same
+        thing here as it does in the faction records.
+        """
         return self.name
 
     def get_role_description(self):
@@ -267,7 +276,7 @@ class Character(DictAccessMixin):
                     'gender': child_gender
                 })
 
-def generate_main_characters(num_characters=3, female_percentage=50, male_percentage=50):
+def generate_main_characters(num_characters=3, female_percentage=50, male_percentage=50, output_dir=None):
     """
     Generate main characters using the name generation from SciFiGenerator.
     
@@ -297,26 +306,7 @@ def generate_main_characters(num_characters=3, female_percentage=50, male_percen
         print(f"CHAR_GEN: Using direct gender bias: Female {female_percentage}%, Male {male_percentage}%")
 
     # Try to load factions data
-    factions_data = None
-    try:
-        with open("current_work/factions.json", 'r') as f:
-            data = json.load(f)
-            # Handle both direct list format and wrapped format
-            if isinstance(data, list):
-                factions_data = data
-            elif isinstance(data, dict) and "factions" in data:
-                factions_data = data["factions"]
-            else:
-                factions_data = data
-            print(f"Loaded factions data: Found {len(factions_data)} factions")
-    except FileNotFoundError:
-        print("No factions file found - characters will be generated without faction affiliations")
-    except json.JSONDecodeError as e:
-        print(f"Error parsing factions.json: {e}")
-        return None
-    except Exception as e:
-        print(f"Unexpected error loading factions: {e}")
-        return None
+    factions_data = load_faction_data(output_dir)
 
     # Get list of all habitable planets if factions exist
     habitable_planets = []
@@ -505,8 +495,10 @@ def generate_main_characters(num_characters=3, female_percentage=50, male_percen
     antagonist_faction = None
     supporting_character_count = 0
 
-    # One registry per cast so no two characters share a name.
+    # One registry per cast so no two characters share a name, seeded with
+    # the faction roster so they cannot reuse a name from there either.
     name_registry = NameRegistry()
+    reserve_person_names(name_registry, factions_data)
 
     for i in range(min(num_characters, len(roles))):
         try:
@@ -622,6 +614,9 @@ def generate_main_characters(num_characters=3, female_percentage=50, male_percen
                 char.home_system = homeworld["system"]
                 char.faction = homeworld["faction"]
             
+            # Record first name, surname and the titled display name.
+            apply_name_parts(char, char.name, char.title)
+
             characters.append(char)
             
         except Exception as e:
@@ -702,6 +697,10 @@ def save_characters_to_file(characters, filename="characters.json"):
     for char in characters:
         char_dict = {
             "name": char.name,
+            "first_name": getattr(char, "first_name", ""),
+            "last_name": getattr(char, "last_name", ""),
+            "title": getattr(char, "title", "") or "",
+            "display_name": getattr(char, "display_name", char.name),
             "role": char.role,
             "gender": char.gender,
             "age": char.age,

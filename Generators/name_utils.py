@@ -13,6 +13,8 @@ three recurring problems:
 The helpers here give all the generators one way of doing each of those things.
 """
 
+import json
+import os
 import random
 
 # --- Gender normalisation ---------------------------------------------------
@@ -216,6 +218,168 @@ def default_registry():
     their call chain (faction staff, governors, and similar).
     """
     return _DEFAULT_REGISTRY
+
+
+# --- Reading the faction roster back ----------------------------------------
+
+DEFAULT_OUTPUT_DIR = "current_work"
+
+# Where lore.py writes factions.json, and the flat layout older projects used.
+_FACTION_FILE_LOCATIONS = [
+    os.path.join("story", "lore", "factions.json"),
+    "factions.json",
+]
+
+
+def resolve_faction_file(output_dir=None):
+    """
+    Return the path to the project's factions.json, or None if there isn't one.
+
+    Factions are saved under `<output_dir>/story/lore/`; the flat
+    `<output_dir>/factions.json` is still accepted for older projects.
+    """
+    output_dir = output_dir or DEFAULT_OUTPUT_DIR
+    for relative_path in _FACTION_FILE_LOCATIONS:
+        candidate = os.path.join(output_dir, relative_path)
+        if os.path.exists(candidate):
+            return candidate
+    return None
+
+
+def load_faction_data(output_dir=None, label="factions"):
+    """
+    Load the faction list for a project, or None when there is nothing to load.
+
+    Accepts both the bare list and the {"factions": [...]} wrapper that the
+    various save functions produce.
+    """
+    path = resolve_faction_file(output_dir)
+    if path is None:
+        print(f"No {label} file found - characters will be generated "
+              f"without {label} affiliations")
+        return None
+
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except json.JSONDecodeError as exc:
+        print(f"Error parsing {path}: {exc}")
+        return None
+    except Exception as exc:  # unreadable file, permissions, ...
+        print(f"Unexpected error loading {label}: {exc}")
+        return None
+
+    if isinstance(data, dict) and "factions" in data:
+        data = data["factions"]
+
+    try:
+        print(f"Loaded {label} data from {path}: Found {len(data)} {label}")
+    except TypeError:
+        pass
+    return data
+
+
+def iter_person_records(data):
+    """
+    Yield every generated person found in a faction structure.
+
+    Faction JSON mixes people with places, so a record counts as a person only
+    when it carries both a name and a gender - the shape the character helpers
+    produce for leaders, governors and staff.
+    """
+    if isinstance(data, dict):
+        name = data.get("full_name") or data.get("name")
+        if name and data.get("gender"):
+            yield data
+        for value in data.values():
+            yield from iter_person_records(value)
+    elif isinstance(data, list):
+        for value in data:
+            yield from iter_person_records(value)
+
+
+def reserve_person_names(registry, data):
+    """
+    Reserve every person's name in `data` so a later cast cannot reuse them.
+
+    This is what keeps a main character from sharing a name with a faction
+    leader generated in an earlier pass. Returns the number of names reserved.
+    """
+    if not data:
+        return 0
+
+    reserved = set()
+    for person in iter_person_records(data):
+        name = person.get("full_name") or person.get("name")
+        if name and name not in reserved:
+            reserved.add(name)
+            registry.reserve(name)
+    return len(reserved)
+
+
+# --- Name parts -------------------------------------------------------------
+
+def split_name(full_name):
+    """
+    Split a generated name into (first_name, last_name).
+
+    Everything after the first token is the surname, so compound surnames such
+    as "Van Helsing" survive intact. A single-token name has no surname.
+    """
+    parts = str(full_name or "").split()
+    if not parts:
+        return "", ""
+    return parts[0], " ".join(parts[1:])
+
+
+def display_name_for(name, title=None):
+    """Return the name as it should be shown: "Sheriff Ada Vance", or "Ada Vance"."""
+    name = (name or "").strip()
+    title = (title or "").strip()
+    return f"{title} {name}".strip() if title else name
+
+
+def refresh_display_name(character):
+    """
+    Recompute a character's `display_name` from their current title and name.
+
+    Several genres assign the title after the character is built, so this is
+    called once the character is complete.
+    """
+    name = character["name"] if isinstance(character, dict) else getattr(character, "name", "")
+    title = character.get("title") if isinstance(character, dict) else getattr(character, "title", "")
+    display = display_name_for(name, title)
+
+    if isinstance(character, dict):
+        character["display_name"] = display
+    else:
+        character.display_name = display
+    return display
+
+
+def apply_name_parts(character, full_name, title=None):
+    """
+    Record a character's name consistently, whichever shape they are stored in.
+
+    Every genre ends up with the same five fields: `name` (the plain first and
+    last name), `first_name`, `last_name`, `title` (empty when the character
+    holds none) and `display_name` (the title and name together).
+    """
+    first_name, last_name = split_name(full_name)
+    fields = {
+        "name": full_name,
+        "first_name": first_name,
+        "last_name": last_name,
+        "title": title or "",
+        "display_name": display_name_for(full_name, title),
+    }
+
+    if isinstance(character, dict):
+        character.update(fields)
+    else:
+        for key, value in fields.items():
+            setattr(character, key, value)
+    return character
 
 
 # --- Character records ------------------------------------------------------

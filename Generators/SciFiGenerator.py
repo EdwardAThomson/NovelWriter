@@ -374,6 +374,7 @@ def _generate_named_character(title_list, role, specific_title=None, female_perc
 
     return {
         "title": title,
+        "name": full_name,
         "first_name": first_name,
         "last_name": last_name,
         "full_name": full_name,

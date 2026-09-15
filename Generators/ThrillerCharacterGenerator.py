@@ -2,7 +2,16 @@ import random
 import json
 from datetime import datetime
 
-from .name_utils import CharacterRecord, NameRegistry, as_dict
+from .name_utils import (
+    CharacterRecord,
+    NameRegistry,
+    apply_name_parts,
+    as_dict,
+    load_faction_data,
+    normalize_gender,
+    reserve_person_names,
+    title_for_gender,
+)
 
 def generate_thriller_names():
     """Generate names suitable for thriller characters"""
@@ -200,6 +209,42 @@ def generate_thriller_backgrounds():
         "Ex-private investigator"
     ]
 
+def generate_thriller_professions():
+    """Generate professions suitable for thriller characters"""
+    return [
+        "FBI Agent", "CIA Officer", "Police Detective", "Police Chief", "Agency Director",
+        "Field Agent", "Intelligence Analyst", "Army Colonel", "Marine Captain", "Navy Commander",
+        "Federal Prosecutor", "Forensic Examiner", "Security Consultant", "Investigative Journalist",
+        "Private Investigator", "Bodyguard", "Hostage Negotiator", "Arms Dealer", "Fixer",
+        "Assassin", "Smuggler", "Hacker", "Mercenary", "Crime Boss", "Informant", "Diplomat",
+    ]
+
+
+# The rank a character is addressed by, derived from their profession. The
+# ranks used to sit in the first-name pool, which produced characters actually
+# named "Agent" or "Commander"; they belong here instead.
+THRILLER_PROFESSION_TITLES = {
+    "FBI Agent": "Agent",
+    "CIA Officer": "Agent",
+    "Field Agent": "Agent",
+    "Police Detective": "Detective",
+    "Private Investigator": "Detective",
+    "Police Chief": "Chief",
+    "Agency Director": "Director",
+    "Army Colonel": "Colonel",
+    "Marine Captain": "Captain",
+    "Navy Commander": "Commander",
+    "Federal Prosecutor": "Counselor",
+    "Hostage Negotiator": "Negotiator",
+    "Diplomat": "Ambassador",
+}
+
+
+def title_for_profession(profession, gender=None):
+    """Return the rank a profession is addressed by, or "" if it has none."""
+    return THRILLER_PROFESSION_TITLES.get(profession, "")
+
+
 def generate_thriller_specialties():
     """Generate specialties for thriller characters"""
     return [
@@ -210,7 +255,7 @@ def generate_thriller_specialties():
         "Counter-Intelligence", "Cyber Security Expert"
     ]
 
-def generate_thriller_main_characters(num_characters=5, female_percentage=50, male_percentage=50, **kwargs):
+def generate_thriller_main_characters(num_characters=5, female_percentage=50, male_percentage=50, output_dir=None, **kwargs):
     """Generate main characters for thriller stories"""
     # Validate gender percentages
     female_weight = 0.5  # Default
@@ -226,24 +271,7 @@ def generate_thriller_main_characters(num_characters=5, female_percentage=50, ma
         print(f"THRILLER_CHAR_GEN: Using gender bias: Female {female_percentage}%, Male {male_percentage}%")
 
     # Try to load factions data for agency assignment
-    factions_data = None
-    try:
-        with open("current_work/factions.json", 'r') as f:
-            data = json.load(f)
-            # Handle both direct list format and wrapped format
-            if isinstance(data, list):
-                factions_data = data
-            elif isinstance(data, dict) and "factions" in data:
-                factions_data = data["factions"]
-            else:
-                factions_data = data
-            print(f"Loaded thriller agencies data: Found {len(factions_data)} agencies")
-    except FileNotFoundError:
-        print("No agencies file found - characters will be generated without agency affiliations")
-    except json.JSONDecodeError as e:
-        print(f"Error parsing factions.json: {e}")
-    except Exception as e:
-        print(f"Unexpected error loading agencies: {e}")
+    factions_data = load_faction_data(output_dir, label="agencies")
 
     # Extract headquarters from agencies for character assignment
     headquarters = []
@@ -270,6 +298,7 @@ def generate_thriller_main_characters(num_characters=5, female_percentage=50, ma
     arcs = generate_thriller_character_arcs()
     backgrounds = generate_thriller_backgrounds()
     specialties = generate_thriller_specialties()
+    professions = generate_thriller_professions()
     
     roles = ["protagonist", "deuteragonist", "antagonist"] + ["supporting"] * 7  # Allow up to 10 characters
     
@@ -280,14 +309,19 @@ def generate_thriller_main_characters(num_characters=5, female_percentage=50, ma
     antagonist_agency = None
     supporting_character_count = 0
     
-    # One registry per cast so no two characters share a name.
+    # One registry per cast so no two characters share a name, seeded with
+    # the agency roster so they cannot reuse a name from there either.
     name_registry = NameRegistry()
+    reserve_person_names(name_registry, factions_data)
 
     for i in range(min(num_characters, len(roles))):
         try:
             # Generate gender using weights
             gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
             
+            # A character's rank, if any, follows from their profession.
+            profession = random.choice(professions)
+
             # Select name based on gender
             name = name_registry.unique_name(
                 lambda: f"{random.choice(first_names_female if gender == 'Female' else first_names_male)} "
@@ -309,6 +343,7 @@ def generate_thriller_main_characters(num_characters=5, female_percentage=50, ma
                 "arc": random.choice(arcs),
                 "background": random.choice(backgrounds),
                 "specialty": random.choice(specialties),
+                "profession": profession,
                 "description": "",
                 "agency": None,
                 "agency_role": None,
@@ -364,6 +399,10 @@ def generate_thriller_main_characters(num_characters=5, female_percentage=50, ma
                 character["agency"] = hq["agency"]
                 character["agency_type"] = hq["agency_type"]
             
+            # Record the title, first name, surname and display name.
+            apply_name_parts(character, character["name"],
+                             title_for_profession(profession, gender))
+
             # Wrapped so consumers can use either char["name"] or char.name.
             characters.append(CharacterRecord(character))
             

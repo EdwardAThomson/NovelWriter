@@ -3,7 +3,13 @@ import random
 import os
 from datetime import datetime
 
-from .name_utils import default_registry, normalize_gender, pick_title_for_gender
+from .name_utils import (
+    default_registry,
+    display_name_for,
+    normalize_gender,
+    pick_title_for_gender,
+    split_name,
+)
 
 # --- Horror Name Generation System ---
 
@@ -517,13 +523,17 @@ def _generate_named_character(title_list, role, faction_type="Unknown", female_p
     # Select title
     title = pick_title_for_gender(title_list, gender)
     
+    first_name, last_name = split_name(name)
+
     return {
         "name": name,
+        "first_name": first_name,
+        "last_name": last_name,
         "gender": gender,
         "title": title,
         "role": role,
         "faction_type": faction_type,
-        "display_name": f"{title} {name}",
+        "display_name": display_name_for(name, title),
         "full_name": name
     }
 

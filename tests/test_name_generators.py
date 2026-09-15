@@ -12,11 +12,17 @@ These cover the defects found in the September 2026 audit of the generators:
   * three genres returning plain dicts while the rest returned objects, so
     consumers using attribute access logged every name as 'N/A',
   * duplicate entries inside the name pools, and names present in both the
-    male and female pool of the same genre.
+    male and female pool of the same genre,
+  * main characters reusing the name of a faction leader generated in an
+    earlier pass, because the generators read a factions.json path that no
+    longer existed and never saw the roster,
+  * characters carrying only a bare `name`, with no separate first name,
+    surname or title, and three genres carrying no title at all.
 """
 
 import contextlib
 import io
+import json
 import re
 
 import pytest
@@ -25,8 +31,14 @@ from Generators.GenreHandlers import get_genre_handler
 from Generators.name_utils import (
     CharacterRecord,
     NameRegistry,
+    as_dict,
+    display_name_for,
+    iter_person_records,
     normalize_gender,
     pick_title_for_gender,
+    reserve_person_names,
+    resolve_faction_file,
+    split_name,
     title_for_gender,
 )
 
@@ -311,3 +323,222 @@ def test_character_record_supports_both_access_styles():
         record.nickname
     with pytest.raises(KeyError):
         record["nickname"]
+
+
+# --- Name parts: title, first name, surname ---------------------------------
+
+NAME_FIELDS = ("name", "first_name", "last_name", "title", "display_name")
+
+
+@pytest.mark.parametrize("genre", GENRES)
+def test_characters_carry_every_name_field(genre):
+    """Every genre records the same five name fields."""
+    for character in generate_cast(genre, num_characters=5):
+        data = as_dict(character)
+        missing = [field for field in NAME_FIELDS if field not in data]
+        assert not missing, f"{genre}: missing {missing}"
+
+
+@pytest.mark.parametrize("genre", GENRES)
+def test_name_parts_reconstruct_the_name(genre):
+    """first_name and last_name must add back up to name."""
+    for character in generate_cast(genre, num_characters=5):
+        data = as_dict(character)
+        rebuilt = f"{data['first_name']} {data['last_name']}".strip()
+        assert rebuilt == data["name"], f"{genre}: {rebuilt!r} != {data['name']!r}"
+        assert data["first_name"], f"{genre}: empty first name"
+        assert data["last_name"], f"{genre}: empty surname"
+
+
+@pytest.mark.parametrize("genre", GENRES)
+def test_display_name_shows_the_title(genre):
+    """display_name is the title and name together, or just the name."""
+    for character in generate_cast(genre, num_characters=5):
+        data = as_dict(character)
+        if data["title"]:
+            assert data["display_name"] == f"{data['title']} {data['name']}"
+        else:
+            assert data["display_name"] == data["name"]
+
+
+def test_split_name_keeps_compound_surnames():
+    assert split_name("Ada Vance") == ("Ada", "Vance")
+    assert split_name("Persephone Van Helsing") == ("Persephone", "Van Helsing")
+    assert split_name("Cher") == ("Cher", "")
+    assert split_name("") == ("", "")
+
+
+def test_display_name_for():
+    assert display_name_for("Ada Vance", "Sheriff") == "Sheriff Ada Vance"
+    assert display_name_for("Ada Vance", None) == "Ada Vance"
+    assert display_name_for("Ada Vance", "") == "Ada Vance"
+
+
+@pytest.mark.parametrize("module_name, profession, expected", [
+    ("Generators.WesternCharacterGenerator", "Sheriff", "Sheriff"),
+    ("Generators.WesternCharacterGenerator", "Doctor", "Doc"),
+    ("Generators.WesternCharacterGenerator", "Cowboy", ""),
+    ("Generators.WesternCharacterGenerator", "Gambler", ""),
+    ("Generators.ThrillerCharacterGenerator", "FBI Agent", "Agent"),
+    ("Generators.ThrillerCharacterGenerator", "Agency Director", "Director"),
+    ("Generators.ThrillerCharacterGenerator", "Smuggler", ""),
+    ("Generators.RomanceCharacterGenerator", "Doctor", "Dr."),
+    ("Generators.RomanceCharacterGenerator", "Florist", ""),
+])
+def test_title_follows_from_profession(module_name, profession, expected):
+    """A character is addressed by their job, or not at all."""
+    module = __import__(module_name, fromlist=["title_for_profession"])
+    assert module.title_for_profession(profession, "Female") == expected
+
+
+def test_western_honorific_follows_gender():
+    from Generators.WesternCharacterGenerator import title_for_profession
+
+    assert title_for_profession("Teacher", "Female") == "Miss"
+    assert title_for_profession("Banker", "Male") == "Mister"
+
+
+@pytest.mark.parametrize("genre", ["Western", "Thriller", "Romance"])
+def test_profession_driven_titles_are_consistent(genre):
+    """A character's title must be the one their profession implies."""
+    module_name = {
+        "Western": "Generators.WesternCharacterGenerator",
+        "Thriller": "Generators.ThrillerCharacterGenerator",
+        "Romance": "Generators.RomanceCharacterGenerator",
+    }[genre]
+    module = __import__(module_name, fromlist=["title_for_profession"])
+
+    for _ in range(10):
+        for character in generate_cast(genre):
+            data = as_dict(character)
+            expected = module.title_for_profession(data["profession"], data["gender"])
+            assert data["title"] == expected, (
+                f"{genre}: {data['profession']} titled {data['title']!r}")
+
+
+def test_mystery_title_matches_the_profession():
+    """An FBI agent gets a law-enforcement rank, not a private-security one."""
+    from Generators.MysteryCharacterGenerator import (
+        MYSTERY_PROFESSION_TITLE_TYPES,
+        MysteryCharacter,
+    )
+
+    families = {
+        "law_enforcement": MysteryCharacter.LAW_ENFORCEMENT_TITLES,
+        "legal": MysteryCharacter.LEGAL_TITLES,
+        "civilian": MysteryCharacter.CIVILIAN_TITLES,
+        "private": MysteryCharacter.PRIVATE_TITLES,
+    }
+
+    def titles_in(family):
+        found = set()
+        for rank in family.values():
+            for titles in rank.values():
+                found.update(titles)
+        return found
+
+    for _ in range(10):
+        for character in generate_cast("Mystery"):
+            data = as_dict(character)
+            expected_family = MYSTERY_PROFESSION_TITLE_TYPES.get(data["profession"])
+            if expected_family and data["title"]:
+                assert data["title"] in titles_in(families[expected_family]), (
+                    f"{data['profession']} titled {data['title']!r}, "
+                    f"which is not a {expected_family} title")
+
+
+# --- Names are unique across generation passes ------------------------------
+
+FACTION_GENRES_WITH_PEOPLE = ["Fantasy", "Sci-Fi", "Horror"]
+
+
+@pytest.mark.parametrize("genre", FACTION_GENRES_WITH_PEOPLE)
+def test_cast_does_not_reuse_faction_names(genre, tmp_path):
+    """A main character must not be given a faction leader's name."""
+    lore = tmp_path / "story" / "lore"
+    lore.mkdir(parents=True)
+    handler = get_genre_handler(genre)
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        factions = handler.generate_factions(num_factions=4, female_percentage=50,
+                                             male_percentage=50)
+        handler.save_factions(factions, filename=str(lore / "factions.json"))
+
+    saved = json.loads((lore / "factions.json").read_text())
+    faction_names = {p.get("full_name") or p.get("name")
+                     for p in iter_person_records(saved)}
+    assert faction_names, f"{genre}: no named faction people to collide with"
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        cast = handler.generate_characters(num_characters=10, female_percentage=50,
+                                           male_percentage=50,
+                                           output_dir=str(tmp_path))
+
+    cast_names = {as_dict(c)["name"] for c in cast}
+    assert not (faction_names & cast_names)
+
+
+def test_resolve_faction_file_finds_the_project_layout(tmp_path):
+    """factions.json lives under story/lore; the old flat path still works."""
+    assert resolve_faction_file(str(tmp_path)) is None
+
+    flat = tmp_path / "factions.json"
+    flat.write_text("[]")
+    assert resolve_faction_file(str(tmp_path)) == str(flat)
+
+    lore = tmp_path / "story" / "lore"
+    lore.mkdir(parents=True)
+    structured = lore / "factions.json"
+    structured.write_text("[]")
+    # The structured location wins when both exist.
+    assert resolve_faction_file(str(tmp_path)) == str(structured)
+
+
+def test_iter_person_records_ignores_places():
+    """Faction data mixes people with territories; only people are names."""
+    data = {
+        "faction_name": "The Iron Pact",
+        "territory": {"name": "Stonereach"},
+        "leader": {"full_name": "Ada Vance", "gender": "Female"},
+        "staff": [{"full_name": "Bo Kay", "gender": "Male"},
+                  {"name": "Cy Rex", "gender": "Female"}],
+    }
+
+    found = {p.get("full_name") or p.get("name") for p in iter_person_records(data)}
+
+    assert found == {"Ada Vance", "Bo Kay", "Cy Rex"}
+
+
+def test_reserve_person_names_blocks_reuse():
+    registry = NameRegistry()
+    data = {"leader": {"full_name": "Ada Vance", "gender": "Female"}}
+
+    assert reserve_person_names(registry, data) == 1
+    assert not registry.is_free("Ada Vance")
+    # The first name is taken too, so a different surname is still a clash.
+    assert not registry.is_free("Ada Kay")
+    assert registry.is_free("Bo Kay")
+
+
+@pytest.mark.parametrize("genre", GENRES)
+def test_saved_characters_keep_every_name_field(genre, tmp_path):
+    """The save functions build explicit field lists - they must not drop these."""
+    handler = get_genre_handler(genre)
+    target = tmp_path / "characters.json"
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        cast = handler.generate_characters(num_characters=5, female_percentage=50,
+                                           male_percentage=50)
+        handler.save_characters(cast, filename=str(target))
+
+    saved = json.loads(target.read_text())
+    characters = saved["characters"] if isinstance(saved, dict) else saved
+    assert characters
+
+    for entry in characters:
+        missing = [field for field in NAME_FIELDS if field not in entry]
+        assert not missing, f"{genre}: save dropped {missing}"
+        rebuilt = f"{entry['first_name']} {entry['last_name']}".strip()
+        assert rebuilt == entry["name"]
+        if entry["title"]:
+            assert entry["display_name"] == f"{entry['title']} {entry['name']}"

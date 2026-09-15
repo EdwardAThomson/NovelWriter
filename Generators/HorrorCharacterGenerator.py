@@ -2,7 +2,13 @@ import json
 import random
 from datetime import datetime
 from .HorrorGenerator import generate_horror_name, HORROR_FIRST_NAMES, HORROR_SURNAMES
-from .name_utils import DictAccessMixin, NameRegistry
+from .name_utils import (
+    DictAccessMixin,
+    NameRegistry,
+    apply_name_parts,
+    load_faction_data,
+    reserve_person_names,
+)
 
 # Horror-specific character roles and attributes
 HORROR_ROLES = ["protagonist", "deuteragonist", "antagonist", "supporting", "minor"]
@@ -198,6 +204,9 @@ class HorrorCharacter(DictAccessMixin):
         """Convert character to dictionary for JSON serialization."""
         return {
             "name": self.name,
+            "first_name": getattr(self, "first_name", ""),
+            "last_name": getattr(self, "last_name", ""),
+            "display_name": getattr(self, "display_name", self.name),
             "gender": self.gender,
             "age": self.age,
             "role": self.role,
@@ -217,7 +226,7 @@ class HorrorCharacter(DictAccessMixin):
             "faction_type": self.faction_type
         }
 
-def generate_horror_main_characters(num_characters=5, female_percentage=50, male_percentage=50, **kwargs):
+def generate_horror_main_characters(num_characters=5, female_percentage=50, male_percentage=50, output_dir=None, **kwargs):
     """Generate main characters for horror stories."""
     # Validate gender percentages
     female_weight = 0.5  # Default
@@ -233,24 +242,7 @@ def generate_horror_main_characters(num_characters=5, female_percentage=50, male
         print(f"HORROR_CHAR_GEN: Using gender bias: Female {female_percentage}%, Male {male_percentage}%")
 
     # Try to load factions data for faction assignment
-    factions_data = None
-    try:
-        with open("current_work/factions.json", 'r') as f:
-            data = json.load(f)
-            # Handle both direct list format and wrapped format
-            if isinstance(data, list):
-                factions_data = data
-            elif isinstance(data, dict) and "factions" in data:
-                factions_data = data["factions"]
-            else:
-                factions_data = data
-            print(f"Loaded horror factions data: Found {len(factions_data)} factions")
-    except FileNotFoundError:
-        print("No factions file found - characters will be generated without faction affiliations")
-    except json.JSONDecodeError as e:
-        print(f"Error parsing factions.json: {e}")
-    except Exception as e:
-        print(f"Unexpected error loading factions: {e}")
+    factions_data = load_faction_data(output_dir)
 
     # Extract strongholds/territories from factions for character assignment
     strongholds = []
@@ -280,8 +272,10 @@ def generate_horror_main_characters(num_characters=5, female_percentage=50, male
     antagonist_faction = None
     supporting_character_count = 0
     
-    # One registry per cast so no two characters share a name.
+    # One registry per cast so no two characters share a name, seeded with
+    # the faction roster so they cannot reuse a name from there either.
     name_registry = NameRegistry()
+    reserve_person_names(name_registry, factions_data)
 
     for i in range(min(num_characters, len(roles))):
         try:
@@ -384,6 +378,9 @@ def generate_horror_main_characters(num_characters=5, female_percentage=50, male
                 character.stronghold = stronghold["name"]
                 character.faction_type = stronghold["faction_type"]
             
+            # Record first name, surname and the titled display name.
+            apply_name_parts(character, character.name, character.title)
+
             characters.append(character)
             
         except Exception as e:
