@@ -2,7 +2,15 @@ import random
 import json
 from datetime import datetime
 
-class MysteryCharacter:
+from .name_utils import (
+    DictAccessMixin,
+    NameRegistry,
+    apply_name_parts,
+    load_faction_data,
+    reserve_person_names,
+)
+
+class MysteryCharacter(DictAccessMixin):
     """Character class for Mystery genre with proper title and family handling"""
     
     # Mystery-specific title lists
@@ -136,9 +144,12 @@ class MysteryCharacter:
 
     @property
     def full_name(self):
-        """Return the character's full name with title if set."""
-        if self.title:
-            return f"{self.title} {self.name}"
+        """
+        The character's first name and surname, without any title.
+
+        Use `display_name` for the titled form; `full_name` means the same
+        thing here as it does in the faction records.
+        """
         return self.name
 
     def generate_family(self):
@@ -230,6 +241,37 @@ class MysteryCharacter:
                     'gender': child_gender
                 })
 
+# Which family of titles each profession is addressed from, so that an FBI
+# agent is given a law-enforcement rank rather than a private-security one.
+MYSTERY_PROFESSION_TITLE_TYPES = {
+    "Detective": "law_enforcement",
+    "Partner Detective": "law_enforcement",
+    "Police Officer": "law_enforcement",
+    "FBI Agent": "law_enforcement",
+    "Private Investigator": "private",
+    "Informant": "private",
+    "Assistant DA": "legal",
+    "Defense Attorney": "legal",
+    "Court Reporter": "legal",
+    "Corrupt Official": "legal",
+    "Forensic Expert": "civilian",
+    "Lab Technician": "civilian",
+    "Crime Reporter": "civilian",
+    "Criminal Mastermind": "civilian",
+    "Crime Boss": "civilian",
+    "Witness": "civilian",
+    "Victim": "civilian",
+}
+
+
+def title_type_for_profession(profession, fallback_types):
+    """Pick the title family that matches a profession, or fall back to the role's."""
+    title_type = MYSTERY_PROFESSION_TITLE_TYPES.get(profession)
+    if title_type and title_type in fallback_types:
+        return title_type
+    return title_type or random.choice(fallback_types)
+
+
 def generate_mystery_first_name(gender=None):
     """Generate appropriate first names for mystery characters (no titles)"""
     first_names_male = [
@@ -246,9 +288,9 @@ def generate_mystery_first_name(gender=None):
         "Sarah", "Kate", "Emma", "Lisa", "Anna", "Jane", "Mary", "Susan", "Linda", "Carol",
         "Nancy", "Beth", "Amy", "Julie", "Helen", "Ruth", "Joan", "Diane", "Laura", "Grace",
         "Jennifer", "Patricia", "Elizabeth", "Barbara", "Margaret", "Dorothy", "Sandra",
-        "Ashley", "Kimberly", "Emily", "Donna", "Michelle", "Carol", "Amanda", "Melissa",
-        "Deborah", "Stephanie", "Rebecca", "Sharon", "Cynthia", "Kathleen", "Amy", "Angela",
-        "Brenda", "Emma", "Olivia", "Cynthia", "Marie", "Janet", "Catherine", "Frances"
+        "Ashley", "Kimberly", "Emily", "Donna", "Michelle", "Theresa", "Amanda", "Melissa",
+        "Deborah", "Stephanie", "Rebecca", "Sharon", "Cynthia", "Kathleen", "Gloria", "Angela",
+        "Brenda", "Vivian", "Olivia", "Rosemary", "Marie", "Janet", "Catherine", "Frances"
     ]
     
     if gender == "Male":
@@ -269,8 +311,8 @@ def generate_mystery_last_name():
         "Strong", "Bold", "Brave", "True", "Just", "Fair", "Good", "Best", "Prime",
         "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis",
         "Rodriguez", "Martinez", "Hernandez", "Lopez", "Gonzalez", "Wilson", "Anderson",
-        "Thomas", "Taylor", "Moore", "Jackson", "Martin", "Lee", "Perez", "Thomson",
-        "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson", "Walker"
+        "Thomas", "Taylor", "Mercer", "Jackson", "Martin", "Lee", "Perez", "Thomson",
+        "Whitfield", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis", "Robinson", "Walker"
     ]
     
     return random.choice(last_names)
@@ -456,7 +498,7 @@ def generate_mystery_backgrounds():
         "Comes from a small town"
     ]
 
-def generate_mystery_main_characters(num_characters=5, female_percentage=50, male_percentage=50, **kwargs):
+def generate_mystery_main_characters(num_characters=5, female_percentage=50, male_percentage=50, output_dir=None, **kwargs):
     """Generate main characters for mystery stories"""
     MAX_CHARACTERS = 100
     if num_characters > MAX_CHARACTERS:
@@ -510,14 +552,20 @@ def generate_mystery_main_characters(num_characters=5, female_percentage=50, mal
         }
     }
     
+    agencies_data = load_faction_data(output_dir, label="agencies")
+
+    # One registry per cast so no two characters share a name, seeded with
+    # the agency roster so they cannot reuse a name from there either.
+    name_registry = NameRegistry()
+    reserve_person_names(name_registry, agencies_data)
+
     for i in range(num_characters):
         # Generate gender using weighted random selection (same as SciFi generator)
         gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
         
         # Generate name
-        first_name = generate_mystery_first_name(gender)
-        last_name = generate_mystery_last_name()
-        full_name = f"{first_name} {last_name}"
+        full_name = name_registry.unique_name(
+            lambda: f"{generate_mystery_first_name(gender)} {generate_mystery_last_name()}")
         
         role = roles[i] if i < len(roles) else "supporting"
         char = MysteryCharacter(full_name, role)
@@ -533,14 +581,13 @@ def generate_mystery_main_characters(num_characters=5, female_percentage=50, mal
         else:  # supporting
             char.age = random.randint(20, 70)
         
-        # Set title based on role
+        # Set profession first, then a title drawn from the matching family
         role_traits = trait_sets[role]
-        title_type = random.choice(role_traits["title_types"])
+        char.profession = random.choice(role_traits["professions"])
+
+        title_type = title_type_for_profession(char.profession, role_traits["title_types"])
         title_rank = random.choice(role_traits["title_ranks"])
         char.set_title(title_type, title_rank)
-        
-        # Set profession
-        char.profession = random.choice(role_traits["professions"])
         
         # Generate family
         char.generate_family()
@@ -553,116 +600,89 @@ def generate_mystery_main_characters(num_characters=5, female_percentage=50, mal
         char.arc = random.choice(arcs)
         char.background = random.choice(backgrounds)
         
+        # Record first name, surname and the titled display name.
+        apply_name_parts(char, char.name, char.title)
+
         characters.append(char)
     
-    # Try to load agencies data for character assignment after all characters are created
-    try:
-        with open("current_work/factions.json", 'r') as f:
-            data = json.load(f)
-            # Handle both direct list format and wrapped format
-            if isinstance(data, list):
-                agencies_data = data
-            elif isinstance(data, dict) and "factions" in data:
-                agencies_data = data["factions"]
+    # Assign the characters to the agencies loaded above.
+    headquarters = []
+    for agency in (agencies_data or []):
+        agency_name = agency.get("name", "Unknown Agency")
+        agency_type = agency.get("type", "Unknown Type")
+        territory = agency.get("territory", "Unknown Location")
+        headquarters.append({
+            "name": territory,
+            "agency": agency_name,
+            "agency_type": agency_type
+        })
+
+    if headquarters:
+        # Track agency assignments for protagonist and antagonist
+        protagonist_agency = None
+        antagonist_agency = None
+        supporting_character_count = 0
+        
+        for char in characters:
+            role = char.role
+            
+            # Initialize agency_role for supporting characters
+            if role == "supporting":
+                supporting_character_count += 1
+                if supporting_character_count <= 2:
+                    char.agency_role = "Protagonist Ally"
+                elif supporting_character_count <= 4:
+                    char.agency_role = "Antagonist Ally"
+                else:
+                    char.agency_role = "Neutral"
             else:
-                agencies_data = data
-            print(f"Loaded mystery agencies data: Found {len(agencies_data)} agencies")
+                char.agency_role = None
             
-            # Extract headquarters from agencies for character assignment
-            headquarters = []
-            for agency in agencies_data:
-                agency_name = agency.get("name", "Unknown Agency")
-                agency_type = agency.get("type", "Unknown Type")
-                territory = agency.get("territory", "Unknown Location")
-                headquarters.append({
-                    "name": territory,
-                    "agency": agency_name,
-                    "agency_type": agency_type
-                })
+            # Assign headquarters/agency based on role and existing agency assignments
+            if role == "protagonist":
+                hq = random.choice(headquarters)
+                protagonist_agency = hq["agency"]
+            elif role == "antagonist":
+                # Antagonist should be from a different agency if possible
+                antagonist_hqs = [h for h in headquarters if h["agency"] != protagonist_agency]
+                if not antagonist_hqs and headquarters:
+                    antagonist_hqs = headquarters
+                hq = random.choice(antagonist_hqs)
+                antagonist_agency = hq["agency"]
+            elif role == "deuteragonist":
+                # Deuteragonist usually allies with protagonist
+                deuteragonist_hqs = [h for h in headquarters if h["agency"] == protagonist_agency]
+                if not deuteragonist_hqs:
+                    deuteragonist_hqs = headquarters
+                hq = random.choice(deuteragonist_hqs)
+            else:  # supporting
+                if char.agency_role == "Protagonist Ally":
+                    supporting_hqs = [h for h in headquarters if h["agency"] == protagonist_agency]
+                    if not supporting_hqs:
+                        supporting_hqs = headquarters
+                    hq = random.choice(supporting_hqs)
+                elif char.agency_role == "Antagonist Ally":
+                    supporting_hqs = [h for h in headquarters if h["agency"] == antagonist_agency]
+                    if not supporting_hqs:
+                        supporting_hqs = headquarters
+                    hq = random.choice(supporting_hqs)
+                else:  # Neutral
+                    hq = random.choice(headquarters)
             
-            if headquarters:
-                # Track agency assignments for protagonist and antagonist
-                protagonist_agency = None
-                antagonist_agency = None
-                supporting_character_count = 0
-                
-                for char in characters:
-                    role = char.role
-                    
-                    # Initialize agency_role for supporting characters
-                    if role == "supporting":
-                        supporting_character_count += 1
-                        if supporting_character_count <= 2:
-                            char.agency_role = "Protagonist Ally"
-                        elif supporting_character_count <= 4:
-                            char.agency_role = "Antagonist Ally"
-                        else:
-                            char.agency_role = "Neutral"
-                    else:
-                        char.agency_role = None
-                    
-                    # Assign headquarters/agency based on role and existing agency assignments
-                    if role == "protagonist":
-                        hq = random.choice(headquarters)
-                        protagonist_agency = hq["agency"]
-                    elif role == "antagonist":
-                        # Antagonist should be from a different agency if possible
-                        antagonist_hqs = [h for h in headquarters if h["agency"] != protagonist_agency]
-                        if not antagonist_hqs and headquarters:
-                            antagonist_hqs = headquarters
-                        hq = random.choice(antagonist_hqs)
-                        antagonist_agency = hq["agency"]
-                    elif role == "deuteragonist":
-                        # Deuteragonist usually allies with protagonist
-                        deuteragonist_hqs = [h for h in headquarters if h["agency"] == protagonist_agency]
-                        if not deuteragonist_hqs:
-                            deuteragonist_hqs = headquarters
-                        hq = random.choice(deuteragonist_hqs)
-                    else:  # supporting
-                        if char.agency_role == "Protagonist Ally":
-                            supporting_hqs = [h for h in headquarters if h["agency"] == protagonist_agency]
-                            if not supporting_hqs:
-                                supporting_hqs = headquarters
-                            hq = random.choice(supporting_hqs)
-                        elif char.agency_role == "Antagonist Ally":
-                            supporting_hqs = [h for h in headquarters if h["agency"] == antagonist_agency]
-                            if not supporting_hqs:
-                                supporting_hqs = headquarters
-                            hq = random.choice(supporting_hqs)
-                        else:  # Neutral
-                            hq = random.choice(headquarters)
-                    
-                    char.headquarters = hq["name"]
-                    char.agency = hq["agency"]
-                    char.agency_type = hq["agency_type"]
-                    
-                print(f"Assigned {len(characters)} characters to agencies")
+            char.headquarters = hq["name"]
+            char.agency = hq["agency"]
+            char.agency_type = hq["agency_type"]
             
-    except FileNotFoundError:
-        print("No agencies file found - characters will be generated without agency affiliations")
-        # Initialize empty agency attributes for all characters
-        for char in characters:
-            char.agency = None
-            char.agency_role = None
-            char.headquarters = None
-            char.agency_type = None
-    except json.JSONDecodeError as e:
-        print(f"Error parsing factions.json: {e}")
-        # Initialize empty agency attributes for all characters
-        for char in characters:
-            char.agency = None
-            char.agency_role = None
-            char.headquarters = None
-            char.agency_type = None
-    except Exception as e:
-        print(f"Unexpected error loading agencies: {e}")
-        # Initialize empty agency attributes for all characters
-        for char in characters:
-            char.agency = None
-            char.agency_role = None
-            char.headquarters = None
-            char.agency_type = None
+        print(f"Assigned {len(characters)} characters to agencies")
     
+    else:
+        # No agency data for this project - leave the fields unset.
+        for char in characters:
+            char.agency = None
+            char.agency_role = None
+            char.headquarters = None
+            char.agency_type = None
+
     return characters
 
 def generate_mystery_relationships(characters):
@@ -715,6 +735,10 @@ def save_mystery_characters_to_file(characters, filename="mystery_characters.jso
     for char in characters:
         char_dict = {
             "name": char.name,
+            "first_name": getattr(char, "first_name", ""),
+            "last_name": getattr(char, "last_name", ""),
+            "title": getattr(char, "title", "") or "",
+            "display_name": getattr(char, "display_name", char.name),
             "role": char.role,
             "gender": char.gender,
             "age": char.age,

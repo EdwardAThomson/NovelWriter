@@ -85,7 +85,8 @@ class HistoricalHandler(BaseGenreHandler):
         return generate_historical_main_characters(
             num_characters=num_characters,
             female_percentage=female_percentage,
-            male_percentage=male_percentage
+            male_percentage=male_percentage,
+            output_dir=kwargs.get('output_dir'),
         )
     
     def save_characters(self, characters, filename="historical_characters.json"):

@@ -87,8 +87,11 @@ class BaseGenreHandler(ABC):
             num_characters (int): Number of characters to generate
             female_percentage (int): Percentage of female characters
             male_percentage (int): Percentage of male characters
-            **kwargs: Additional genre-specific parameters
-        
+            **kwargs: Additional genre-specific parameters. `output_dir` is the
+                project directory whose factions.json the characters are matched
+                against, so that a main character cannot be given the name of a
+                faction leader generated earlier.
+
         Returns:
             list: List of character objects
         """

@@ -70,7 +70,8 @@ class FantasyHandler(BaseGenreHandler):
             num_characters=num_characters,
             female_percentage=female_percentage,
             male_percentage=male_percentage,
-            include_races=include_races
+            include_races=include_races,
+            output_dir=kwargs.get('output_dir'),
         )
     
     def save_characters(self, characters, filename):

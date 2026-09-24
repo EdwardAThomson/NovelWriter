@@ -3,6 +3,14 @@ import random
 import os
 from datetime import datetime
 
+from .name_utils import (
+    default_registry,
+    display_name_for,
+    normalize_gender,
+    pick_title_for_gender,
+    split_name,
+)
+
 # --- Horror Name Generation System ---
 
 # Horror character names (mix of classic and modern)
@@ -26,7 +34,7 @@ HORROR_FIRST_NAMES = {
 HORROR_SURNAMES = [
     "Blackwood", "Ravencroft", "Thornfield", "Grimm", "Darkmore", "Shadowmere", "Bloodworth", "Nightshade", "Ashford", "Bane",
     "Crowley", "Dracul", "Evernight", "Faust", "Graves", "Hollow", "Ironwood", "Jekyll", "Karnstein", "Lovecraft",
-    "Moreau", "Nosferatu", "Orlok", "Poe", "Quatermass", "Renfield", "Stoker", "Thorne", "Usher", "Van Helsing",
+    "Moreau", "Mordraine", "Orlok", "Poe", "Quatermass", "Renfield", "Stoker", "Thorne", "Usher", "Van Helsing",
     "Whitmore", "Xander", "York", "Zorn", "Addams", "Bathory", "Carmilla", "Dracula", "Frankenstein", "Gothic",
     "Hawthorne", "Irving", "Karloff", "Lugosi", "Murnau", "Nosferatu", "Price", "Rathbone", "Shelley", "Whale"
 ]
@@ -292,13 +300,17 @@ HORROR_SPECIALIZED_TITLES = {
 }
 
 def generate_horror_name(gender=None):
-    """Generate a horror-appropriate character name."""
-    if gender is None:
-        gender = random.choice(["male", "female"])
-    
-    first_name = random.choice(HORROR_FIRST_NAMES[gender])
+    """
+    Generate a horror-appropriate character name.
+
+    Accepts a gender in any casing and returns the canonical "Female"/"Male"
+    spelling alongside the name, so callers can record it consistently.
+    """
+    gender = normalize_gender(gender) if gender else random.choice(["Male", "Female"])
+
+    first_name = random.choice(HORROR_FIRST_NAMES[gender.lower()])
     surname = random.choice(HORROR_SURNAMES)
-    
+
     return f"{first_name} {surname}", gender
 
 def generate_cult_name():
@@ -353,6 +365,10 @@ def generate_horror_factions(num_factions=3, female_percentage=50, male_percenta
     if num_factions > len(faction_types):
         faction_types = faction_types * ((num_factions // len(faction_types)) + 1)
     
+    # Fresh registry per world, so names are unique across the faction roster
+    # without carrying over from earlier generation runs.
+    default_registry().clear()
+
     # Randomly select faction types
     selected_types = random.sample(faction_types, num_factions)
     
@@ -497,23 +513,27 @@ def _generate_named_character(title_list, role, faction_type="Unknown", female_p
     """Generate a named character with title and role for horror factions."""
     # Determine gender based on percentages
     if random.randint(1, 100) <= female_percentage:
-        gender = "female"
+        gender = "Female"
     else:
-        gender = "male"
-    
+        gender = "Male"
+
     # Generate name
-    name, _ = generate_horror_name(gender)
+    name = default_registry().unique_name(lambda: generate_horror_name(gender)[0])
     
     # Select title
-    title = random.choice(title_list)
+    title = pick_title_for_gender(title_list, gender)
     
+    first_name, last_name = split_name(name)
+
     return {
         "name": name,
+        "first_name": first_name,
+        "last_name": last_name,
         "gender": gender,
         "title": title,
         "role": role,
         "faction_type": faction_type,
-        "display_name": f"{title} {name}",
+        "display_name": display_name_for(name, title),
         "full_name": name
     }
 

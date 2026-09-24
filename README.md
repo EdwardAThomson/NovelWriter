@@ -99,22 +99,27 @@ Each example includes the complete workflow outputs showing all intermediate gen
     cd NovelWriter
     ```
 
-2.  **Create a Virtual Environment (Recommended):**
+2.  **Check your Python version:**
+    NovelWriter requires **Python 3.12 or newer** (it uses syntax introduced in
+    3.12). `python --version` will tell you what you have; if it is older, use a
+    newer interpreter explicitly, e.g. `python3.12 main.py`.
+
+3.  **Create a Virtual Environment (Recommended):**
 It might easiest to open the files in an IDE and let it handle virtual environments automatically.
     
     ```bash
-    python -m venv venv
+    python3.12 -m venv venv
     source venv/bin/activate  # On Windows use `venv\Scripts\activate`
     ```
 
-3.  **Install Dependencies:**
+4.  **Install Dependencies:**
     
     ```bash
     pip install -r requirements.txt
     ```
     * (or `pip install python-dotenv "llm-backends[all] @ git+https://github.com/EdwardAThomson/llm-backends@v0.2.0"`)
     
-4.  **Configure API Keys:**
+5.  **Configure API Keys:**
     *   Create a file named `.env` in the root directory of the project.
     *   Add your API keys to this file in the following format:
         

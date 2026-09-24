@@ -1,10 +1,17 @@
 from .HistoricalGenerator import generate_faction_name, ADJECTIVES
+from .name_utils import (
+    DictAccessMixin,
+    NameRegistry,
+    apply_name_parts,
+    load_faction_data,
+    reserve_person_names,
+)
 import random
 import json
 from datetime import datetime
 import re
 
-class HistoricalCharacter:
+class HistoricalCharacter(DictAccessMixin):
     # Class-level title lists for historical settings
     NOBLE_TITLES = {
         "high": {
@@ -211,9 +218,12 @@ class HistoricalCharacter:
 
     @property
     def full_name(self):
-        """Return the character's full name with title if set."""
-        if self.title:
-            return f"{self.title} {self.name}"
+        """
+        The character's first name and surname, without any title.
+
+        Use `display_name` for the titled form; `full_name` means the same
+        thing here as it does in the faction records.
+        """
         return self.name
 
     def get_role_description(self):
@@ -338,7 +348,7 @@ def generate_historical_name(gender=None):
         # Ancient/Classical
         "Cleopatra", "Livia", "Julia", "Octavia", "Agrippina", "Lucretia", "Cornelia", "Portia", "Calpurnia", "Fulvia",
         # Various periods
-        "Anastasia", "Katarina", "Francesca", "Lucrezia", "Bianca", "Violante", "Seraphina", "Arabella", "Rosalind", "Cordelia"
+        "Anastasia", "Katarina", "Francesca", "Lucrezia", "Bianca", "Violante", "Seraphina", "Arabella", "Rosalind", "Ottavia"
     ]
     
     if gender == "Male":
@@ -355,7 +365,7 @@ def generate_historical_surname():
         # English/European nobility
         "Plantagenet", "Tudor", "Stuart", "Windsor", "Medici", "Borgia", "Habsburg", "Bourbon", "Valois", "Anjou",
         # Common historical surnames
-        "Blackwood", "Ashford", "Pemberton", "Worthington", "Kensington", "Harrington", "Wellington", "Covington", "Huntington", "Lexington","Wellington",
+        "Blackwood", "Ashford", "Pemberton", "Worthington", "Kensington", "Harrington", "Wellington", "Covington", "Huntington", "Lexington", "Abbington",
         # Occupational/descriptive
         "Blacksmith", "Fletcher", "Cooper", "Mason", "Baker", "Miller", "Carpenter", "Weaver", "Tanner", "Merchant",
         # Geographic
@@ -363,7 +373,7 @@ def generate_historical_surname():
     ]
     return random.choice(surnames)
 
-def generate_historical_main_characters(num_characters=3, female_percentage=50, male_percentage=50):
+def generate_historical_main_characters(num_characters=3, female_percentage=50, male_percentage=50, output_dir=None):
     """
     Generate main historical characters using comprehensive character generation.
     
@@ -393,26 +403,7 @@ def generate_historical_main_characters(num_characters=3, female_percentage=50, 
         print(f"HISTORICAL_CHAR_GEN: Using direct gender bias: Female {female_percentage}%, Male {male_percentage}%")
 
     # Try to load factions data
-    factions_data = None
-    try:
-        with open("current_work/factions.json", 'r') as f:
-            data = json.load(f)
-            # Handle both direct list format and wrapped format
-            if isinstance(data, list):
-                factions_data = data
-            elif isinstance(data, dict) and "factions" in data:
-                factions_data = data["factions"]
-            else:
-                factions_data = data
-            print(f"Loaded factions data: Found {len(factions_data)} factions")
-    except FileNotFoundError:
-        print("No factions file found - characters will be generated without faction affiliations")
-    except json.JSONDecodeError as e:
-        print(f"Error parsing factions.json: {e}")
-        return None
-    except Exception as e:
-        print(f"Unexpected error loading factions: {e}")
-        return None
+    factions_data = load_faction_data(output_dir)
 
     # Get list of all territories if factions exist
     territories = []
@@ -650,15 +641,19 @@ def generate_historical_main_characters(num_characters=3, female_percentage=50, 
     antagonist_faction = None
     supporting_character_count = 0
 
+    # One registry per cast so no two characters share a name, seeded with
+    # the faction roster so they cannot reuse a name from there either.
+    name_registry = NameRegistry()
+    reserve_person_names(name_registry, factions_data)
+
     for i in range(min(num_characters, len(roles))):
         try:
             # Generate gender first
             gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
             
             # Generate name
-            first_name = generate_historical_name(gender)
-            last_name = generate_historical_surname()
-            full_name = f"{first_name} {last_name}"
+            full_name = name_registry.unique_name(
+                lambda: f"{generate_historical_name(gender)} {generate_historical_surname()}")
             
             role = roles[i]
             char = HistoricalCharacter(full_name, role)
@@ -804,6 +799,9 @@ def generate_historical_main_characters(num_characters=3, female_percentage=50, 
                 char.home_region = homeland["type"]
                 char.faction = homeland["faction"]
             
+            # Record first name, surname and the titled display name.
+            apply_name_parts(char, char.name, char.title)
+
             characters.append(char)
             
         except Exception as e:
@@ -885,6 +883,10 @@ def save_historical_characters_to_file(characters, filename="historical_characte
     for char in characters:
         char_dict = {
             "name": char.name,
+            "first_name": getattr(char, "first_name", ""),
+            "last_name": getattr(char, "last_name", ""),
+            "title": getattr(char, "title", "") or "",
+            "display_name": getattr(char, "display_name", char.name),
             "role": char.role,
             "gender": char.gender,
             "age": char.age,

@@ -2,13 +2,26 @@ import random
 import json
 from datetime import datetime
 
+from .name_utils import (
+    CharacterRecord,
+    NameRegistry,
+    apply_name_parts,
+    as_dict,
+    load_faction_data,
+    normalize_gender,
+    reserve_person_names,
+    title_for_gender,
+)
+
 def generate_western_names():
     """Generate names suitable for western characters"""
+    # Given names only - "Sheriff", "Marshal", "Judge" and the rest are ranks
+    # the story assigns, not names, and read as nonsense in "Sheriff Creek".
     first_names_male = [
         "Jake", "Cole", "Wyatt", "Jesse", "Colt", "Buck", "Hank", "Wade", "Clay", "Jed",
         "Luke", "Sam", "Tom", "Bill", "Jack", "Frank", "Joe", "Ben", "Matt", "Dan",
         "Clint", "Duke", "Rex", "Cash", "Tex", "Beau", "Zeke", "Ike", "Gus", "Bart",
-        "Sheriff", "Marshal", "Deputy", "Judge", "Doc", "Preacher", "Captain", "Major"
+        "Amos", "Cyrus", "Eli", "Hollis", "Levi", "Mose", "Silas", "Virgil"
     ]
     
     first_names_female = [
@@ -181,6 +194,37 @@ def generate_western_professions():
         "Cavalry Officer", "Fort Commander", "Trader", "Trapper", "Guide", "Newspaper Editor"
     ]
 
+# How a character is addressed, by profession. Most western characters are not
+# addressed by a title at all, which is why the majority map to None - a
+# gambler is just "Bart Creek", while the town lawman is "Sheriff Creek".
+WESTERN_PROFESSION_TITLES = {
+    "Sheriff": "Sheriff",
+    "Marshal": "Marshal",
+    "Deputy": "Deputy",
+    "Judge": "Judge",
+    "Doctor": "Doc",
+    "Preacher": "Reverend",
+    "Teacher": "Miss",
+    "Cavalry Officer": "Captain",
+    "Fort Commander": "Colonel",
+    "Soldier": "Trooper",
+    "Indian Agent": "Agent",
+    "Newspaper Editor": "Editor",
+    "Banker": "Mr.",
+}
+
+
+def title_for_profession(profession, gender):
+    """Return the form of address for a profession, or "" if it has none."""
+    title = WESTERN_PROFESSION_TITLES.get(profession)
+    if not title:
+        return ""
+    # "Miss"/"Mr." depend on the character rather than the job.
+    if title in ("Miss", "Mr."):
+        return "Miss" if normalize_gender(gender) == "Female" else "Mr."
+    return title_for_gender(title, gender)
+
+
 def generate_western_backgrounds():
     """Generate background stories for western characters"""
     return [
@@ -206,7 +250,7 @@ def generate_western_backgrounds():
         "Came west to start over"
     ]
 
-def generate_western_main_characters(num_characters=5, female_percentage=50, male_percentage=50, **kwargs):
+def generate_western_main_characters(num_characters=5, female_percentage=50, male_percentage=50, output_dir=None, **kwargs):
     """Generate main characters for western stories"""
     # Validate gender percentages
     female_weight = 0.5  # Default
@@ -222,24 +266,7 @@ def generate_western_main_characters(num_characters=5, female_percentage=50, mal
         print(f"WESTERN_CHAR_GEN: Using gender bias: Female {female_percentage}%, Male {male_percentage}%")
 
     # Try to load factions data for faction assignment
-    factions_data = None
-    try:
-        with open("current_work/factions.json", 'r') as f:
-            data = json.load(f)
-            # Handle both direct list format and wrapped format
-            if isinstance(data, list):
-                factions_data = data
-            elif isinstance(data, dict) and "factions" in data:
-                factions_data = data["factions"]
-            else:
-                factions_data = data
-            print(f"Loaded western factions data: Found {len(factions_data)} factions")
-    except FileNotFoundError:
-        print("No factions file found - characters will be generated without faction affiliations")
-    except json.JSONDecodeError as e:
-        print(f"Error parsing factions.json: {e}")
-    except Exception as e:
-        print(f"Unexpected error loading factions: {e}")
+    factions_data = load_faction_data(output_dir)
 
     # Extract territories from factions for character assignment
     territories = []
@@ -276,19 +303,23 @@ def generate_western_main_characters(num_characters=5, female_percentage=50, mal
     antagonist_faction = None
     supporting_character_count = 0
     
+    # One registry per cast so no two characters share a name, seeded with
+    # the faction roster so they cannot reuse a name from there either.
+    name_registry = NameRegistry()
+    reserve_person_names(name_registry, factions_data)
+
     for i in range(min(num_characters, len(roles))):
         try:
             # Generate gender using weights
             gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
             
+            # A character's form of address follows from their profession.
+            profession = random.choice(professions)
+
             # Select name based on gender
-            if gender == "Female":
-                first_name = random.choice(first_names_female)
-            else:
-                first_name = random.choice(first_names_male)
-            
-            last_name = random.choice(last_names)
-            name = f"{first_name} {last_name}"
+            name = name_registry.unique_name(
+                lambda: f"{random.choice(first_names_female if gender == 'Female' else first_names_male)} "
+                        f"{random.choice(last_names)}")
             
             # Assign role
             role = roles[i]
@@ -305,7 +336,7 @@ def generate_western_main_characters(num_characters=5, female_percentage=50, mal
                 "strengths": [random.choice(strengths)],
                 "arc": random.choice(arcs),
                 "background": random.choice(backgrounds),
-                "profession": random.choice(professions),
+                "profession": profession,
                 "description": "",
                 "faction": None,
                 "faction_role": None,
@@ -361,7 +392,12 @@ def generate_western_main_characters(num_characters=5, female_percentage=50, mal
                 character["faction"] = territory["faction"]
                 character["faction_type"] = territory["faction_type"]
             
-            characters.append(character)
+            # Record the title, first name, surname and display name.
+            apply_name_parts(character, character["name"],
+                             title_for_profession(profession, gender))
+
+            # Wrapped so consumers can use either char["name"] or char.name.
+            characters.append(CharacterRecord(character))
             
         except Exception as e:
             print(f"Error generating character {i} ({role}): {e}")
@@ -416,7 +452,7 @@ def save_western_characters_to_file(characters, filename="western_characters.jso
     relationships = generate_western_relationships(characters)
     
     data = {
-        "characters": characters,
+        "characters": [as_dict(char) for char in characters],
         "relationships": relationships,
         "metadata": {
             "generation_date": datetime.now().isoformat(),

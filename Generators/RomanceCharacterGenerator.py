@@ -2,14 +2,25 @@ import random
 import json
 from datetime import datetime
 
+from .name_utils import (
+    CharacterRecord,
+    NameRegistry,
+    apply_name_parts,
+    as_dict,
+    load_faction_data,
+    normalize_gender,
+    reserve_person_names,
+    title_for_gender,
+)
+
 def generate_romance_names():
     """Generate names suitable for romance characters"""
     first_names_male = [
         "Alexander", "Sebastian", "Nicholas", "Christopher", "Benjamin", "Jonathan", "Matthew", "Andrew",
         "Gabriel", "Daniel", "Michael", "William", "James", "David", "Robert", "Thomas", "Charles",
         "Anthony", "Mark", "Steven", "Kevin", "Brian", "Edward", "Ronald", "Timothy", "Jason",
-        "Jeffrey", "Ryan", "Jacob", "Gary", "Nicholas", "Eric", "Stephen", "Jonathan", "Larry",
-        "Justin", "Scott", "Brandon", "Frank", "Gregory", "Raymond", "Samuel", "Patrick", "Jack"
+        "Jeffrey", "Ryan", "Jacob", "Gary", "Vincent", "Eric", "Stephen", "Julian", "Larry",
+        "Justin", "Marcus", "Brandon", "Frank", "Gregory", "Raymond", "Samuel", "Patrick", "Jack"
     ]
     
     first_names_female = [
@@ -22,7 +33,7 @@ def generate_romance_names():
     
     last_names = [
         "Anderson", "Thompson", "Wilson", "Martinez", "Taylor", "Moore", "Jackson", "Martin",
-        "Lee", "Perez", "Thompson", "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis",
+        "Lee", "Perez", "Brooks", "White", "Harris", "Sanchez", "Clark", "Ramirez", "Lewis",
         "Robinson", "Walker", "Young", "Allen", "King", "Wright", "Scott", "Torres", "Nguyen",
         "Hill", "Flores", "Green", "Adams", "Nelson", "Baker", "Hall", "Rivera", "Campbell",
         "Mitchell", "Carter", "Roberts", "Gomez", "Phillips", "Evans", "Turner", "Diaz", "Parker",
@@ -185,6 +196,22 @@ def generate_romance_professions():
         "Personal Assistant", "HR Manager", "Financial Advisor", "Consultant", "Entrepreneur"
     ]
 
+# Romance characters are addressed by name, not rank; only the handful of
+# professions that carry an honorific get a title.
+ROMANCE_PROFESSION_TITLES = {
+    "Doctor": "Dr.",
+    "Veterinarian": "Dr.",
+    "Therapist": "Dr.",
+    "Lawyer": "Counselor",
+    "Chef": "Chef",
+}
+
+
+def title_for_profession(profession, gender=None):
+    """Return the honorific for a profession, or "" if it carries none."""
+    return ROMANCE_PROFESSION_TITLES.get(profession, "")
+
+
 def generate_romance_backgrounds():
     """Generate background stories for romance characters"""
     return [
@@ -210,7 +237,7 @@ def generate_romance_backgrounds():
         "Has always lived in the same neighborhood"
     ]
 
-def generate_romance_main_characters(num_characters=5, female_percentage=50, male_percentage=50, **kwargs):
+def generate_romance_main_characters(num_characters=5, female_percentage=50, male_percentage=50, output_dir=None, **kwargs):
     """Generate main characters for romance stories"""
     # Validate gender percentages
     female_weight = 0.5  # Default
@@ -226,24 +253,7 @@ def generate_romance_main_characters(num_characters=5, female_percentage=50, mal
         print(f"ROMANCE_CHAR_GEN: Using gender bias: Female {female_percentage}%, Male {male_percentage}%")
 
     # Try to load factions data for social group assignment
-    factions_data = None
-    try:
-        with open("current_work/factions.json", 'r') as f:
-            data = json.load(f)
-            # Handle both direct list format and wrapped format
-            if isinstance(data, list):
-                factions_data = data
-            elif isinstance(data, dict) and "factions" in data:
-                factions_data = data["factions"]
-            else:
-                factions_data = data
-            print(f"Loaded romance social groups data: Found {len(factions_data)} social groups")
-    except FileNotFoundError:
-        print("No social groups file found - characters will be generated without social group affiliations")
-    except json.JSONDecodeError as e:
-        print(f"Error parsing factions.json: {e}")
-    except Exception as e:
-        print(f"Unexpected error loading social groups: {e}")
+    factions_data = load_faction_data(output_dir, label="social groups")
 
     # Extract venues from social groups for character assignment
     venues = []
@@ -280,19 +290,23 @@ def generate_romance_main_characters(num_characters=5, female_percentage=50, mal
     love_interest_group = None
     supporting_character_count = 0
     
+    # One registry per cast so no two characters share a name, seeded with
+    # the social group roster so they cannot reuse a name from there either.
+    name_registry = NameRegistry()
+    reserve_person_names(name_registry, factions_data)
+
     for i in range(min(num_characters, len(roles))):
         try:
             # Generate gender using weights
             gender = random.choices(["Female", "Male"], weights=[female_weight, male_weight], k=1)[0]
             
+            # A character's honorific, if any, follows from their profession.
+            profession = random.choice(professions)
+
             # Select name based on gender
-            if gender == "Female":
-                first_name = random.choice(first_names_female)
-            else:
-                first_name = random.choice(first_names_male)
-            
-            last_name = random.choice(last_names)
-            name = f"{first_name} {last_name}"
+            name = name_registry.unique_name(
+                lambda: f"{random.choice(first_names_female if gender == 'Female' else first_names_male)} "
+                        f"{random.choice(last_names)}")
             
             # Assign role
             role = roles[i]
@@ -309,7 +323,7 @@ def generate_romance_main_characters(num_characters=5, female_percentage=50, mal
                 "strengths": [random.choice(strengths)],
                 "arc": random.choice(arcs),
                 "background": random.choice(backgrounds),
-                "profession": random.choice(professions),
+                "profession": profession,
                 "description": "",
                 "social_group": None,
                 "group_role": None,
@@ -364,7 +378,12 @@ def generate_romance_main_characters(num_characters=5, female_percentage=50, mal
                 character["social_group"] = venue["social_group"]
                 character["group_type"] = venue["group_type"]
             
-            characters.append(character)
+            # Record the title, first name, surname and display name.
+            apply_name_parts(character, character["name"],
+                             title_for_profession(profession, gender))
+
+            # Wrapped so consumers can use either char["name"] or char.name.
+            characters.append(CharacterRecord(character))
             
         except Exception as e:
             print(f"Error generating character {i} ({role}): {e}")
@@ -420,7 +439,7 @@ def save_romance_characters_to_file(characters, filename="romance_characters.jso
     relationships = generate_romance_relationships(characters)
     
     data = {
-        "characters": characters,
+        "characters": [as_dict(char) for char in characters],
         "relationships": relationships,
         "metadata": {
             "generation_date": datetime.now().isoformat(),
