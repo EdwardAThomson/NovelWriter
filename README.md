@@ -295,3 +295,7 @@ NovelWriter/
 ### Original Version
 
 The original version was created as part of NaNoGenMo 2024 ([**completed**](https://github.com/NaNoGenMo/2024/issues/31)). The first version of the code was pushed to a different repo as I lost access to my GitHub account (fixed!), please find the original repo here: [NovelWriter](https://github.com/edthomson/NovelWriter). That code was not fully automated, but it did generate a 52,000-word novel (Echoes of Terra Nova).
+
+## License
+
+MIT License - See [LICENSE](LICENSE) file for details.
